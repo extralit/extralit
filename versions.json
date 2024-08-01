@@ -3,5 +3,13 @@
     "version": "latest",
     "title": "latest",
     "aliases": []
+  },
+  {
+    "version": "docs_v0.2.0",
+    "title": "docs_v0.2.0",
+    "aliases": [],
+    "properties": {
+      "hidden": true
+    }
   }
 ]
