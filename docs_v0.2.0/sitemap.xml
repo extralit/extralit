@@ -11,6 +11,11 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://docs.extralit.ai/docs_v0.2.0/community/changelog/</loc>
+         <lastmod>2024-08-01</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://docs.extralit.ai/docs_v0.2.0/community/contributor/</loc>
          <lastmod>2024-08-01</lastmod>
          <changefreq>daily</changefreq>
