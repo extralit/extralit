@@ -56,7 +56,7 @@ async def check_existing_document(db: AsyncSession, document_create: DocumentCre
     return existing_document
 
 
-@router.post("/documents", status_code=status.HTTP_201_CREATED, response_model=UUID)
+@router.post("/documents", status_code=status.HTTP_201_CREATED, response_model=DocumentListItem)
 async def upload_document(
     *,
     document_create: DocumentCreateRequest = Depends(),
@@ -101,10 +101,16 @@ async def upload_document(
             document_create.url = files.get_s3_object_url(response.bucket_name, response.object_name)
             if file_data.filename and not document_create.file_name:
                 document_create.file_name = file_data.filename
+                
+    elif not document_create.url:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No document file or URL provided",
+        )
     
     existing_document = await check_existing_document(db, document_create)
     if existing_document is not None:
-        return existing_document.id
+        return DocumentListItem.model_validate(existing_document)
     
     new_document = Document(
         id=document_create.id,
@@ -117,7 +123,7 @@ async def upload_document(
     
     document = await datasets.create_document(db, new_document)
     
-    return document.id
+    return DocumentListItem.model_validate(document)
 
 @router.get("/documents/by-pmid/{pmid}", response_model=DocumentListItem)
 async def get_document_by_pmid(

@@ -30,6 +30,7 @@ from argilla._api._records import RecordsAPI
 from argilla._api._users import UsersAPI
 from argilla._api._vectors import VectorsAPI
 from argilla._api._workspaces import WorkspacesAPI
+from argilla._api._document import DocumentsAPI
 from argilla._exceptions import ArgillaError
 from argilla._constants import _DEFAULT_API_URL
 from argilla._api._token import get_secret
@@ -57,6 +58,7 @@ class ArgillaAPI:
         self.__questions = QuestionsAPI(http_client=self.http_client)
         self.__vectors = VectorsAPI(http_client=self.http_client)
         self.__metadata = MetadataAPI(http_client=self.http_client)
+        self.__documents = DocumentsAPI(http_client=self.http_client)
 
         self.__records = RecordsAPI(http_client=self.http_client)
 
@@ -93,6 +95,10 @@ class ArgillaAPI:
     @property
     def metadata(self) -> "MetadataAPI":
         return self.__metadata
+
+    @property
+    def documents(self) -> "DocumentsAPI":
+        return self.__documents
 
     @property
     def webhooks(self) -> "WebhooksAPI":

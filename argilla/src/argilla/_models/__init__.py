@@ -74,3 +74,4 @@ from argilla._models._settings._vectors import VectorFieldModel
 from argilla._models._user import UserModel, Role
 from argilla._models._workspace import WorkspaceModel
 from argilla._models._webhook import WebhookModel, EventType
+from argilla._models._document import DocumentModel

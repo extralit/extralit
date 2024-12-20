@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, TYPE_CHECKING, Optional, overload, Union, Sequence
+from typing import List, Dict, TYPE_CHECKING, Optional, overload, Union, Sequence
 from uuid import UUID
 
 from argilla._api._workspaces import WorkspacesAPI
 from argilla._helpers import GenericIterator
 from argilla._helpers import LoggingMixin
-from argilla._models import WorkspaceModel
+from argilla._models import WorkspaceModel, DocumentModel
 from argilla._resource import Resource
 from argilla.client import Argilla
 
@@ -130,6 +130,15 @@ class Workspace(Resource):
         """
         return WorkspaceUsers(workspace=self)
 
+    @property
+    def documents(self) -> "WorkspaceDocuments":
+        """List all documents in the workspace
+
+        Returns:
+            WorkspaceDocuments: Interface to manage documents in the workspace
+        """
+        return WorkspaceDocuments(workspace=self)
+
     ############################
     # Private methods
     ############################
@@ -193,3 +202,74 @@ class WorkspaceUsers(Sequence["User"], LoggingMixin):
         if user is None:
             raise ValueError(f"User {username} does not exist")
         return user.add_to_workspace(workspace=self._workspace)
+
+class WorkspaceDocuments(LoggingMixin):
+    """Interface for managing documents in a workspace."""
+
+    def __init__(self, workspace: "Workspace") -> None:
+        self._workspace = workspace
+
+    def add(self, file_path: str, reference: Optional[str] = None,
+            pmid: Optional[str] = None, doi: Optional[str] = None, id: Optional[UUID]= None) -> "DocumentModel":
+        """Add a document to the workspace.
+
+        Args:
+            file_path: Path to a local PDF file or an URL
+            reference: Reference text for the document
+            pmid: PubMed ID if applicable
+            doi: DOI if applicable
+
+        Returns:
+            DocumentModel: The created document
+        """
+        doc = DocumentModel.from_file(
+            str(file_path),
+            reference=reference,
+            pmid=pmid,
+            doi=doi,
+            workspace_id=self._workspace.id,
+            id=id
+        )
+
+        created_doc = self._workspace._client.api.documents.create(doc)
+        self._log_message(f"Added document {created_doc.file_name} to workspace {self._workspace.name}")
+        return created_doc
+
+    def get(self, document_id: Union[str, UUID]) -> Optional["DocumentModel"]:
+        """Get a document by ID.
+
+        Args:
+            document_id: ID of the document to retrieve
+
+        Returns:
+            DocumentModel or None: The document if found
+        """
+        docs = self.list()
+        for doc in docs:
+            if str(doc.id) == str(document_id):
+                return doc
+        return None
+
+    def delete(self, document: Union["DocumentModel", str, UUID]) -> None:
+        """Delete a document from the workspace.
+
+        Args:
+            document: Document, document ID or document UUID to delete
+        """
+        if isinstance(document, (str, UUID)):
+            doc_id = document
+        else:
+            doc_id = document.id
+
+        self._workspace._client.api.documents.delete(document_id=UUID(str(doc_id)))
+        self._log_message(f"Deleted document {doc_id} from workspace {self._workspace.name}")
+
+    def list(self) -> List["DocumentModel"]:
+        """List all documents in the workspace.
+
+        Returns:
+            List[DocumentModel]: List of documents in the workspace
+        """
+        docs = self._workspace._client.api.documents.list(workspace_id=self._workspace.id)
+        self._log_message(f"Got {len(docs)} documents for workspace {self._workspace.name}")
+        return docs
