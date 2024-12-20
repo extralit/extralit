@@ -47,12 +47,16 @@ class DocumentsAPI(ResourceAPI[DocumentModel]):
         self._log_message(f"Created document {doc.id}")
         return doc
 
+
     @api_error_handler
-    def delete(self, document_id: UUID) -> None:
+    def delete(self, document: DocumentModel) -> None:
         """Delete a document."""
-        response = self.http_client.delete(f"{self.url_stub}/{document_id}")
+        response = self.http_client.delete(
+            url=f"{self.url_stub}/{document.id}", 
+        )
         response.raise_for_status()
-        self._log_message(f"Deleted document {document_id}")
+        self._log_message(f"Deleted document {document.id}")
+
 
     @api_error_handler
     def list(self, workspace_id: Optional[UUID] = None) -> List[DocumentModel]:
@@ -67,6 +71,7 @@ class DocumentsAPI(ResourceAPI[DocumentModel]):
         response_json = response.json()
         docs = [self._model_from_json(doc) for doc in response_json]
         return docs
+
 
     def _model_from_json(self, json_doc: Dict) -> DocumentModel:
         """Convert JSON response to DocumentModel."""

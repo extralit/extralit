@@ -250,19 +250,14 @@ class WorkspaceDocuments(LoggingMixin):
                 return doc
         return None
 
-    def delete(self, document: Union["DocumentModel", str, UUID]) -> None:
+    def delete(self, document: "DocumentModel") -> None:
         """Delete a document from the workspace.
 
         Args:
             document: Document, document ID or document UUID to delete
         """
-        if isinstance(document, (str, UUID)):
-            doc_id = document
-        else:
-            doc_id = document.id
-
-        self._workspace._client.api.documents.delete(document_id=UUID(str(doc_id)))
-        self._log_message(f"Deleted document {doc_id} from workspace {self._workspace.name}")
+        self._workspace._client.api.documents.delete(document)
+        self._log_message(f"Deleted document {document.id} from workspace {self._workspace.name}")
 
     def list(self) -> List["DocumentModel"]:
         """List all documents in the workspace.
