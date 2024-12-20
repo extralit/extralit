@@ -1040,24 +1040,11 @@ async def upsert_document(db: "AsyncSession", dataset_create: DocumentCreateRequ
     return DocumentListItem.from_orm(document)
 
 
-async def delete_documents(
-    db: "AsyncSession", workspace_id: UUID, id: UUID = None, pmid: str = None, doi: str = None, url: str = None, reference: str = None
+async def delete_document(
+    db: "AsyncSession", document: Document
 ) -> List[DocumentListItem]:
-    async with db.begin_nested():
-        params = [Document.workspace_id == workspace_id]
-        if id is not None and id != '':
-            params.append(Document.id == id)
-        if pmid:
-            params.append(Document.pmid == pmid)
-        if doi:
-            params.append(Document.doi == doi)
-        if reference:
-            params.append(Document.reference == reference)
-        documents = await Document.delete_many(db=db, params=params, autocommit=False)
-
-    await db.commit()
-    documents = [DocumentListItem(**doc.__dict__) for doc in documents]
-    return documents
+    document = await document.delete(db)
+    return document
 
 
 async def list_documents(

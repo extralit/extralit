@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 from minio import Minio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.orm import selectinload
 
 from argilla_server.database import get_async_db
 from argilla_server.models.database import Document
@@ -16,7 +17,7 @@ from argilla_server.security import auth
 from argilla_server.models import User, Workspace
 from argilla_server.contexts import accounts, datasets, files
 from argilla_server.api.policies.v1 import DocumentPolicy, authorize, is_authorized
-from argilla_server.api.schemas.v1.documents import DocumentCreateRequest, DocumentDeleteRequest, DocumentListItem
+from argilla_server.api.schemas.v1.documents import DocumentCreateRequest, DocumentListItem
 
 if TYPE_CHECKING:
     from argilla_server.models import Document
@@ -150,33 +151,30 @@ async def get_document_by_id(
     return DocumentListItem.model_validate(document)
 
 
-@router.delete("/documents/workspace/{workspace_id}", status_code=status.HTTP_200_OK, response_model=int, description="Delete all documents by workspace_id, or a specific document by id, pmid, doi, or url")
-async def delete_documents_by_workspace_id(*,
-    workspace_id: Union[UUID, str],
-    document_delete: DocumentDeleteRequest = Body(None),
+@router.delete("/documents/{document_id}", status_code=status.HTTP_200_OK, response_model=DocumentListItem, 
+               description="Delete all documents by workspace_id, or a specific document by id, pmid, doi, or url")
+async def delete_document(*,
     db: AsyncSession = Depends(get_async_db),
+    document_id: UUID,
     client: Minio = Depends(files.get_minio_client),
     current_user: User = Security(auth.get_current_user)
     ):
-    await authorize(current_user, DocumentPolicy.delete(workspace_id))
-
-    workspace = await Workspace.get(db, workspace_id)
-    
-    documents = await datasets.delete_documents(
+    document = await Document.get_or_raise(
         db,
-        workspace_id,
-        id=document_delete.id if document_delete else None, 
-        pmid=document_delete.pmid if document_delete else None, 
-        doi=document_delete.doi if document_delete else None,
-        url=document_delete.url if document_delete else None,
-        )
-    
-    _LOGGER.info(f"Deleting {len(documents)} documents")
-    for document in documents:
-        object_path = files.get_pdf_s3_object_path(document.id)
-        files.delete_object(client, workspace.name, object_path)
+        document_id,
+        options=[
+            selectinload(Document.workspace),
+        ],
+    )
 
-    return len(documents)
+    await authorize(current_user, DocumentPolicy.delete(document.workspace_id))
+
+    document = await datasets.delete_document(db, document)
+    
+    object_path = files.get_pdf_s3_object_path(document.id)
+    files.delete_object(client, document.workspace.name, object_path)
+
+    return DocumentListItem.model_validate(document)
 
 
 @router.get("/documents/workspace/{workspace_id}", status_code=status.HTTP_200_OK, 
