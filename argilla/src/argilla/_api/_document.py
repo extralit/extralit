@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from typing import Dict, List, Optional
 from uuid import UUID
 import httpx
@@ -29,21 +30,19 @@ class DocumentsAPI(ResourceAPI[DocumentModel]):
     @api_error_handler
     def create(self, document: DocumentModel) -> DocumentModel:
         """Create a new document."""
-        json = document.to_server_payload()
         files = None
-        if document.file_path:
+        if document.file_path and os.path.exists(document.file_path):
             files = {
                 "file_data": (document.file_name, open(document.file_path, 'rb'), "application/pdf")
             }
 
         response = self.http_client.post(
             url=self.url_stub,
-            params=json,
+            params=document.to_server_payload(),
             files=files
         )
         response.raise_for_status()
         response_json = response.json()
-        print(response_json)
         doc = self._model_from_json(response_json)
         self._log_message(f"Created document {doc.id}")
         return doc

@@ -225,8 +225,8 @@ class WorkspaceDocuments(LoggingMixin):
         doc = DocumentModel.from_file(
             str(file_path),
             reference=reference,
-            pmid=pmid,
-            doi=doi,
+            pmid=str(pmid) if isinstance(pmid, int) or isinstance(pmid, str) and len(pmid)>3 else None,
+            doi=doi if isinstance(doi, str) else None,
             workspace_id=self._workspace.id,
             id=id
         )

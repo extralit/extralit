@@ -41,16 +41,14 @@ class DocumentModel(ResourceModel):
 
         elif urlparse(file_path).scheme:
             url = file_path
-            parsed_url = urlparse(file_path)
-            path = parsed_url.path
-            file_name = unquote(path).split('/')[-1]
+            file_name = kwargs.get('file_name') or unquote(urlparse(url).path).split('/')[-1]
 
         else:
             raise ValueError(f"File path {file_path} does not exist")
 
         return cls(
             id=id or uuid.uuid4(),
-            file_path=None,
+            file_path=file_path,
             file_name=file_name,
             url=url,
             **kwargs

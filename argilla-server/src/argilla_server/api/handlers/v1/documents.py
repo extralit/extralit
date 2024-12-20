@@ -77,22 +77,25 @@ async def upload_document(
     if file_data is not None:
         object_path = files.get_pdf_s3_object_path(document_create.id)
         existing_files = files.list_objects(client, workspace.name, prefix=object_path, include_version=False, recursive=False)
-        # file_data_bytes = base64.b64decode(file_data)
         file_data_bytes = await file_data.read()
 
         put_object = False
-    
         if existing_files.objects:
             new_file_hash = files.compute_hash(file_data_bytes)
-            existing_hashes = [existing_file.etag.strip('"') for existing_file in existing_files.objects if existing_file.etag is not None]
+            existing_hashes = {
+                existing_file.etag.strip('"') \
+                for existing_file in existing_files.objects \
+                if existing_file.etag is not None
+            }
             
             if new_file_hash not in existing_hashes:
                 put_object = True
+            else:
+                _LOGGER.info(f"Skipping upload document %s with hash already exists", object_path)
         else:
             put_object = True
         
         if put_object:
-            
             response = files.put_object(
                 client, bucket=workspace.name, object=object_path, data=file_data_bytes, 
                 size=len(file_data_bytes), content_type="application/pdf", 
@@ -101,7 +104,12 @@ async def upload_document(
             document_create.url = files.get_s3_object_url(response.bucket_name, response.object_name)
             if file_data.filename and not document_create.file_name:
                 document_create.file_name = file_data.filename
-                
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Document with id `{document_create.id}` already exists",
+            )
+
     elif not document_create.url:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
