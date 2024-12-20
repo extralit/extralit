@@ -12,13 +12,6 @@ class DocumentCreateRequest(BaseModel):
     doi: Optional[str] = Field(None, description='The DOI of the document.')
 
 
-class DocumentDeleteRequest(BaseModel):
-    id: Optional[Union[UUID, str]] = None
-    url: Optional[str] = None
-    pmid: Optional[str] = Field(None, description='The PubMed ID of the document.')
-    doi: Optional[str] = Field(None, description='The DOI of the document.')
-
-
 class DocumentListItem(BaseModel):
     id: UUID
     reference: Optional[str]

@@ -617,6 +617,8 @@ class Document(DatabaseModel):
 
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="documents")
 
+    __upsertable_columns__ = {"url", "file_name", "reference", "pmid", "doi"}
+
     def __repr__(self):
         return (
             f"Document(id={str(self.id)!r}, workspace_id={str(self.workspace_id)!r}, reference={self.reference!r},"

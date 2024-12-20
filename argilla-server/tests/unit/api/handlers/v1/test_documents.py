@@ -7,7 +7,6 @@ from unittest.mock import patch
 from uuid import uuid4, UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from argilla_server.schemas.v1.documents import DocumentCreateRequest, DocumentDeleteRequest
 from tests.factories import DocumentFactory, WorkspaceFactory
 
 if TYPE_CHECKING:
@@ -136,10 +135,8 @@ async def test_delete_documents_by_id(async_client: "AsyncClient", db: "AsyncSes
     with patch("argilla_server.contexts.files.delete_object") as mock_delete_object:
         mock_delete_object.return_value = None
 
-        document_delete = DocumentDeleteRequest(id=document.id)
         response = await async_client.delete(
-            f"/api/v1/documents/workspace/{workspace.id}",
-            params=document_delete.dict(),
+            f"/api/v1/documents/{document.id}",
             headers=owner_auth_header
         )
 

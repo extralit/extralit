@@ -20,6 +20,7 @@ These are the section headers that we use:
 ### Changed
 
 - Changed the POST `/documents` endpoint to return Document schema instead of only the document id.
+- Changed to the DELETE `/documents/:document_id` endpoint.
 
 
 ## [Argilla] [2.5.0](https://github.com/argilla-io/argilla/compare/v2.4.1...v2.5.0)
