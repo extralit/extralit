@@ -110,6 +110,11 @@ cd extralit
 
 We recommend using PDM for package management:
 
+python -m venv venv
+venv\Scripts\activate
+
+We recommend using PDM for package management:
+
 ```bash
 # Install PDM if not already installed
 pip install pdm
@@ -170,7 +175,7 @@ Alternatively, you can start all required services using Docker Compose:
 
 ```bash
 # Start Elasticsearch and other services
-docker-compose up -d elasticsearch redis
+docker-compose -f .devcontainer/docker-compose/docker-compose.yml up -d elasticsearch redis
 ```
 
 ### 6. Run Database Migrations and Start the Server
