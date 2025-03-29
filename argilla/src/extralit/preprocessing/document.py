@@ -5,6 +5,31 @@ from typing import Tuple, Optional
 
 import dill
 import pandas as pd
+import logging
+from functools import wraps
+
+# Create a logger for this module
+_LOGGER = logging.getLogger(__name__)
+
+def safe_document_processing(func):
+    """Decorator to provide consistent error handling for document processing functions."""
+    @wraps(func)
+    def wrapper(paper, file_handler, *args, **kwargs):
+        try:
+            return func(paper, file_handler, *args, **kwargs)
+        except Exception as e:
+            paper_id = getattr(paper, 'name', 'unknown')
+            _LOGGER.error(f"Error processing document {paper_id} with {func.__name__}: {str(e)}", exc_info=True)
+            # Return empty segments rather than None
+            return Segments(), Segments(), Segments()
+    return wrapper
+
+# Apply decorator to all document processing functions
+create_or_load_unstructured_segments = safe_document_processing(create_or_load_unstructured_segments)
+create_or_load_llmsherpa_segments = safe_document_processing(create_or_load_llmsherpa_segments)
+create_or_load_nougat_segments = safe_document_processing(create_or_load_nougat_segments)
+create_or_load_pdffigures2_segments = safe_document_processing(create_or_load_pdffigures2_segments)
+create_or_load_deepdoctection_segments = safe_document_processing(create_or_load_deepdoctection_segments)
 
 from extralit.preprocessing.segment import Segments
 from extralit.storage.files import FileHandler, StorageType
@@ -91,33 +116,67 @@ def create_or_load_llmsherpa_segments(
 
     cache_path: str = join('llmsherpa', paper.name)
     model_output_path = join(cache_path, 'document.pkl')
+    
+    # Initialize empty segments to allow partial results
+    texts = Segments()
+    tables = Segments()
 
     if file_handler.exists(cache_path) and load_only:
-        return load_segments(file_handler, cache_path)
+        try:
+            return load_segments(file_handler, cache_path)
+        except Exception as e:
+            _LOGGER.warning(f"Failed to load cached segments for {paper.name}: {str(e)}")
+            # Continue with processing instead of failing
 
     if not file_handler.exists(model_output_path) or redo:
-        print(f"Llmsherpa {paper.name}: {cache_path}", flush=True)
-        os.makedirs(cache_path, exist_ok=True)
-        pdf_reader = LayoutPDFReader(
-            "https://readers.llmsherpa.com/api/document/developer/parseDocument?renderFormat=all")
+        _LOGGER.info(f"Processing {paper.name} with LLMSherpa")
         try:
-            document = pdf_reader.read_pdf(paper.file_path)
+            os.makedirs(cache_path, exist_ok=True)
+            pdf_reader = LayoutPDFReader(
+                "https://readers.llmsherpa.com/api/document/developer/parseDocument?renderFormat=all")
+            
+            try:
+                document = pdf_reader.read_pdf(paper.file_path)
+                if save:
+                    try:
+                        with open(model_output_path, 'wb') as file:
+                            dill.dump(document, file)
+                    except Exception as e:
+                        _LOGGER.warning(f"Failed to save LLMSherpa document for {paper.name}: {str(e)}")
+            except Exception as e:
+                _LOGGER.error(f"LLMSherpa failed to read PDF {paper.name}: {str(e)}")
+                return texts, tables, None
         except Exception as e:
-            print(e)
-            return None, None, None
-        if save:
-            with open(model_output_path, 'wb') as file:
-                dill.dump(document, file)
+            _LOGGER.error(f"Failed to initialize LLMSherpa for {paper.name}: {str(e)}")
+            return texts, tables, None
     else:
-        with open(model_output_path, 'rb') as file:
-            document = dill.load(file)
+        try:
+            with open(model_output_path, 'rb') as file:
+                document = dill.load(file)
+        except Exception as e:
+            _LOGGER.error(f"Failed to load LLMSherpa document for {paper.name}: {str(e)}")
+            return texts, tables, None
 
-    texts = llmsherpa.get_text_segments(document)
-    tables = llmsherpa.get_table_segments(document)
+    # Process text and tables with individual error handling
+    try:
+        texts = llmsherpa.get_text_segments(document)
+    except Exception as e:
+        _LOGGER.warning(f"Failed to extract text segments from {paper.name}: {str(e)}")
+    
+    try:
+        tables = llmsherpa.get_table_segments(document)
+    except Exception as e:
+        _LOGGER.warning(f"Failed to extract table segments from {paper.name}: {str(e)}")
 
-    if save:
-        file_handler.write_text(join(cache_path, 'texts.json'), texts.json())
-        file_handler.write_text(join(cache_path, 'tables.json'), tables.json())
+    # Save results if we have any
+    if save and (len(texts.items) > 0 or len(tables.items) > 0):
+        try:
+            if len(texts.items) > 0:
+                file_handler.write_text(join(cache_path, 'texts.json'), texts.json())
+            if len(tables.items) > 0:
+                file_handler.write_text(join(cache_path, 'tables.json'), tables.json())
+        except Exception as e:
+            _LOGGER.warning(f"Failed to save segments for {paper.name}: {str(e)}")
 
     return texts, tables, None
 
