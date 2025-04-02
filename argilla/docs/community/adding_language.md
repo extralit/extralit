@@ -2,7 +2,7 @@
 
 If you want to add a new language to Argilla you need to go to two places:
 
-1. Add a new translation specification in the folder: `argilla-frontend/translation` E.g. for Korean with Code `ko` add a `ko.js` file by coping the `en.js` file. The text values need to be translated:
+1. Add a new translation specification in the folder: `argilla-frontend/translation` E.g. for Korean with Code `ko` add a `ko.js` file by copying the `en.js` file. The text values need to be translated:
 ```javascript
 export default {
     multi_label_selection: "다중 라벨",
@@ -147,11 +147,12 @@ new_dataset = rg.Dataset(
 )
 new_dataset.create()
 
+import random
 def fix_record():
     return rg.Record(
         fields={
             "chat": [
-                {"role": "user", "content": "What is Argilla?"},
+                {"role": "user", "content": random.choice(questions)},
                 {"role": "assistant", "content": "Argilla is a collaboration tool for AI engineers and domain experts to build high-quality datasets"},
             ],
             "image": "https://images.unsplash.com/photo-1523567353-71ea31cb9f73?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fGNvcmdpfGVufDB8fDB8fHww",
