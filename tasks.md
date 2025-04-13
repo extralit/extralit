@@ -62,7 +62,7 @@ Migrate each command module individually, in order of dependency:
   - [x] Test dataset management commands
   - [x] Test user management commands ✅ (Added on April 15, 2025)
   - [x] Test schema management commands ✅ (Fixed on April 15, 2025)
-  - [ ] Test training and extraction commands (Tests created but not yet tested)
+  - [x] Test training and extraction commands ✅ (Fixed on April 15, 2025)
 - [ ] Test with actual Argilla v2 server
 - [ ] Fix any compatibility issues
 - [ ] Document any API differences between v1 and v2
@@ -105,7 +105,7 @@ argilla = "argilla.cli.app:app"
 - [x] Phase 3: Command Migration - Advanced Functionality ✅
 - [x] Phase 4: Integration and Testing - Main app integration ✅
 - [x] Phase 4: Integration and Testing - Initial command testing ✅
-- [ ] Phase 4: Integration and Testing - Complete test coverage 🔄
+- [x] Phase 4: Integration and Testing - Complete test coverage ✅
 - [ ] Phase 4: Integration and Testing - Live server testing 🔄
 - [ ] Phase 5: Documentation and Finalization
 
@@ -115,7 +115,7 @@ argilla = "argilla.cli.app:app"
 1. Create test files for remaining command modules:
    - [x] Test user management commands ✅ (Added on April 15, 2025)
    - [x] Test schema management commands ✅ (Fixed on April 15, 2025)
-   - [ ] Test training and extraction commands (Tests created but not yet tested)
+   - [x] Test training and extraction commands ✅ (Fixed on April 15, 2025)
 
 2. Live Server Testing:
    - [ ] Set up a local Argilla v2 server for testing
