@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from argilla.cli.typer_ext import ArgillaTyper
+from .__main__ import app
 
-app = ArgillaTyper(help="Display current logged in user", no_args_is_help=True)
+if __name__ == "__main__":
+    app()

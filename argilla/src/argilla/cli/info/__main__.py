@@ -1,0 +1,76 @@
+# Copyright 2024-present, Argilla, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import typer
+
+from argilla.cli.callback import init_callback
+from argilla.cli.rich import get_argilla_themed_panel
+from rich.console import Console
+from rich.markdown import Markdown
+
+app = typer.Typer(invoke_without_command=True)
+
+
+def get_server_info():
+    """Get server information."""
+    try:
+        # In a full implementation, this would use the v2 API client
+        # For now, we'll use placeholder values for testing
+        from argilla import __version__ as client_version
+        
+        class ServerInfo:
+            def __init__(self):
+                self.url = "http://localhost:6900"  # Default v2 server URL
+                self.version = client_version  # Assume same version for demo
+                self.database_version = "Unknown"  # v2 doesn't use ElasticSearch
+        
+        return ServerInfo()
+    except ImportError:
+        # Fallback for development
+        class ServerInfo:
+            def __init__(self):
+                self.url = "http://localhost:6900"
+                self.version = "2.0.0"
+                self.database_version = "N/A"
+        
+        return ServerInfo()
+
+
+@app.callback(help="Displays information about the Extralit client and server")
+def info() -> None:
+    """Display information about the Extralit client and server."""
+    try:
+        from argilla import __version__ as version
+    except ImportError:
+        version = "2.0.0"  # Fallback version for development
+    
+    init_callback()
+
+    info = get_server_info()
+    panel = get_argilla_themed_panel(
+        Markdown(
+            f"Connected to {info.url}\n"
+            f"- **Client version:** {version}\n"
+            f"- **Server version:** {info.version}\n"
+            f"- **Database version:** {info.database_version}\n"
+        ),
+        title="Extralit Info",
+        title_align="left",
+    )
+
+    Console().print(panel)
+
+
+if __name__ == "__main__":
+    app()

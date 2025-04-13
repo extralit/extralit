@@ -24,10 +24,10 @@ This document outlines the plan to migrate the CLI functionality from Argilla v1
 Migrate each command module individually, in order of dependency:
 
 #### Basic Commands
-- [ ] `info_app`: Server information commands
-- [ ] `login_app`: Authentication commands
-- [ ] `logout_app`: Logout functionality
-- [ ] `whoami_app`: User identification
+- [x] `info_app`: Server information commands
+- [x] `login_app`: Authentication commands
+- [x] `logout_app`: Logout functionality
+- [x] `whoami_app`: User identification
 
 #### User Management
 - [ ] `users_app`: User management commands
@@ -94,19 +94,31 @@ argilla = "argilla.cli.app:app"
 ## Progress Tracking
 - [x] Phase 1: Analysis and Setup ✅
 - [x] Phase 2: Core CLI Framework Migration ✅
-- [ ] Phase 3: Command Migration 🔄 (Beginning with info_app)
+- [x] Phase 3: Command Migration - Basic Commands ✅
+  - [x] info_app
+  - [x] login_app
+  - [x] logout_app
+  - [x] whoami_app
+- [ ] Phase 3: Command Migration - User Management 🔄
+- [ ] Phase 3: Command Migration - Workspace Management
+- [ ] Phase 3: Command Migration - Dataset Management
+- [ ] Phase 3: Command Migration - Advanced Functionality
 - [ ] Phase 4: Integration and Testing
 - [ ] Phase 5: Documentation and Finalization
 
 ## Implementation Plan for Next Steps
 
 ### Phase 3: Command Migration - Next Steps
-1. Start with `info_app` implementation (simplest command)
-   - Examine v1 implementation in `argilla-v1/src/argilla_v1/cli/info`
-   - Port to v2 structure with necessary updates
-   - Write tests to verify functionality
+1. ✅ Basic Commands
+   - ✅ `info_app`: Server information commands
+   - ✅ `login_app`: Authentication commands
+   - ✅ `logout_app`: Logout functionality
+   - ✅ `whoami_app`: User identification
 
-2. Continue with authentication commands (`login_app`, `logout_app`, `whoami_app`)
-   - Implement login functionality with v2 API
-   - Update credentials management for v2
-   - Ensure proper error handling
+2. 🔄 User Management Commands (`users_app`)
+   - [ ] Examine v1 implementation in `argilla-v1/src/argilla_v1/cli/users`
+   - [ ] Implement user creation
+   - [ ] Implement user listing
+   - [ ] Implement user update
+   - [ ] Implement user deletion
+   - [ ] Write tests for user management commands
