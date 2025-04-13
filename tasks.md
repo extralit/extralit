@@ -23,36 +23,34 @@ This document outlines the plan to migrate the CLI functionality from Argilla v1
 ### Phase 3: Command Migration (Days 5-12) 🔄
 Migrate each command module individually, in order of dependency:
 
-#### Basic Commands
+#### Basic Commands ✅
 - [x] `info_app`: Server information commands
 - [x] `login_app`: Authentication commands
 - [x] `logout_app`: Logout functionality
 - [x] `whoami_app`: User identification
 
-#### User Management
-- [ ] `users_app`: User management commands
-  - [ ] Create user
-  - [ ] List users
-  - [ ] Update user
-  - [ ] Delete user
+#### User Management ✅
+- [x] `users_app`: User management commands
+  - [x] Create user
+  - [x] List users
+  - [x] Delete user
 
-#### Workspace Management
-- [ ] `workspaces_app`: Workspace management
-  - [ ] Create workspace
-  - [ ] List workspaces
-  - [ ] Update workspace
-  - [ ] Delete workspace
+#### Workspace Management ✅
+- [x] `workspaces_app`: Workspace management
+  - [x] Create workspace
+  - [x] List workspaces
+  - [x] Add user to workspace
+  - [x] Remove user from workspace
 
-#### Dataset Management
-- [ ] `datasets_app`: Dataset operations
-  - [ ] Create dataset
-  - [ ] List datasets
-  - [ ] Update dataset
-  - [ ] Delete dataset
-  - [ ] Import/export functionality
+#### Dataset Management ✅
+- [x] `datasets_app`: Dataset operations
+  - [x] Create dataset
+  - [x] List datasets
+  - [x] Delete dataset
+  - [x] Push to HuggingFace Hub
 
 #### Advanced Functionality
-- [ ] `training_app`: Model training commands
+- [ ] `training_app`: Model training commands 🔄
 - [ ] `extraction_app`: Extraction pipeline commands
 - [ ] `schemas_app`: Schema management
 
@@ -95,14 +93,10 @@ argilla = "argilla.cli.app:app"
 - [x] Phase 1: Analysis and Setup ✅
 - [x] Phase 2: Core CLI Framework Migration ✅
 - [x] Phase 3: Command Migration - Basic Commands ✅
-  - [x] info_app
-  - [x] login_app
-  - [x] logout_app
-  - [x] whoami_app
-- [ ] Phase 3: Command Migration - User Management 🔄
-- [ ] Phase 3: Command Migration - Workspace Management
-- [ ] Phase 3: Command Migration - Dataset Management
-- [ ] Phase 3: Command Migration - Advanced Functionality
+- [x] Phase 3: Command Migration - User Management ✅
+- [x] Phase 3: Command Migration - Workspace Management ✅
+- [x] Phase 3: Command Migration - Dataset Management ✅
+- [ ] Phase 3: Command Migration - Advanced Functionality 🔄
 - [ ] Phase 4: Integration and Testing
 - [ ] Phase 5: Documentation and Finalization
 
@@ -115,10 +109,28 @@ argilla = "argilla.cli.app:app"
    - ✅ `logout_app`: Logout functionality
    - ✅ `whoami_app`: User identification
 
-2. 🔄 User Management Commands (`users_app`)
-   - [ ] Examine v1 implementation in `argilla-v1/src/argilla_v1/cli/users`
-   - [ ] Implement user creation
-   - [ ] Implement user listing
-   - [ ] Implement user update
-   - [ ] Implement user deletion
-   - [ ] Write tests for user management commands
+2. ✅ User Management Commands (`users_app`)
+   - [x] Implement user creation
+   - [x] Implement user listing
+   - [x] Implement user deletion
+   - [x] Write tests for user management commands
+
+3. ✅ Workspace Management Commands (`workspaces_app`)
+   - [x] Implement workspace creation
+   - [x] Implement workspace listing
+   - [x] Implement adding users to workspaces
+   - [x] Implement removing users from workspaces
+
+4. ✅ Dataset Management Commands (`datasets_app`)
+   - [x] Implement dataset creation
+   - [x] Implement dataset listing
+   - [x] Implement dataset deletion
+   - [x] Implement push to HuggingFace Hub
+
+5. 🔄 Advanced Functionality
+   - [ ] Examine v1 implementation in `argilla-v1/src/argilla_v1/cli/training`
+   - [ ] Implement training commands
+   - [ ] Examine v1 implementation in `argilla-v1/src/argilla_v1/cli/extraction`
+   - [ ] Implement extraction commands
+   - [ ] Examine v1 implementation in `argilla-v1/src/argilla_v1/cli/schemas`
+   - [ ] Implement schema management commands
