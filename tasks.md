@@ -5,22 +5,22 @@ This document outlines the plan to migrate the CLI functionality from Argilla v1
 
 ## Project Structure Analysis
 
-### Phase 1: Analysis and Setup (Days 1-2)
+### Phase 1: Analysis and Setup (Days 1-2) ✅
 - [x] Analyze v1 CLI structure in `argilla-v1/src/argilla_v1/cli/`
 - [x] Analyze v2 codebase structure in `argilla/src/argilla/`
 - [x] Identify dependencies and imports that need updating
 - [x] Create initial directory structure in `argilla/src/argilla/cli/`
 - [x] Set up testing environment for CLI commands
 
-### Phase 2: Core CLI Framework Migration (Days 3-4)
+### Phase 2: Core CLI Framework Migration (Days 3-4) ✅
 - [x] Migrate base CLI framework:
   - [x] Port `ArgillaTyper` class and extensions
   - [x] Create main `app.py` entry point
   - [x] Set up command registration structure
   - [x] Update package imports to v2 structure
-  - [ ] Ensure CLI can be invoked properly (Pending test execution)
+  - [x] Ensure CLI can be invoked properly (Tests passing)
 
-### Phase 3: Command Migration (Days 5-12)
+### Phase 3: Command Migration (Days 5-12) 🔄
 Migrate each command module individually, in order of dependency:
 
 #### Basic Commands
@@ -92,8 +92,21 @@ argilla = "argilla.cli.app:app"
 ```
 
 ## Progress Tracking
-- [x] Phase 1: Analysis and Setup
-- [x] Phase 2: Core CLI Framework Migration (final testing pending)
-- [ ] Phase 3: Command Migration
+- [x] Phase 1: Analysis and Setup ✅
+- [x] Phase 2: Core CLI Framework Migration ✅
+- [ ] Phase 3: Command Migration 🔄 (Beginning with info_app)
 - [ ] Phase 4: Integration and Testing
 - [ ] Phase 5: Documentation and Finalization
+
+## Implementation Plan for Next Steps
+
+### Phase 3: Command Migration - Next Steps
+1. Start with `info_app` implementation (simplest command)
+   - Examine v1 implementation in `argilla-v1/src/argilla_v1/cli/info`
+   - Port to v2 structure with necessary updates
+   - Write tests to verify functionality
+
+2. Continue with authentication commands (`login_app`, `logout_app`, `whoami_app`)
+   - Implement login functionality with v2 API
+   - Update credentials management for v2
+   - Ensure proper error handling

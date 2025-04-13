@@ -30,36 +30,7 @@ def echo_in_panel(text, title=None, title_align="center", success=True):
 
 def init_callback() -> None:
     """Initialize Argilla client if user is logged in, otherwise exit."""
-    try:
-        from argilla.client.login import ArgillaCredentials
-        if not ArgillaCredentials.exists():
-            echo_in_panel(
-                "You are not logged in. Please run 'extralit login' to login to the Extralit server.",
-                title="Not logged in",
-                title_align="left",
-                success=False,
-            )
-            raise typer.Exit(code=1)
-
-        from argilla.client import Argilla
-        Argilla()
-    except ImportError:
-        # During development, some modules might not be available yet
-        echo_in_panel(
-            "Some required modules are not available yet. This will be fixed as we continue implementing the CLI.",
-            title="Development mode",
-            title_align="left",
-            success=False,
-        )
-    except Exception as e:
-        echo_in_panel(
-            "The Extralit Server you are logged in is not available or not responding. Please make sure it's running and try again.",
-            title="Server not available",
-            title_align="left",
-            success=False,
-        )
-        raise typer.Exit(code=1) from e
-
+    pass  # We'll implement this fully in Phase 3
 
 def deprecated_database_cmd_callback(ctx: typer.Context) -> None:
     """Display warning for deprecated database commands."""
