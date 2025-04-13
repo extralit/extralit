@@ -20,7 +20,7 @@ This document outlines the plan to migrate the CLI functionality from Argilla v1
   - [x] Update package imports to v2 structure
   - [x] Ensure CLI can be invoked properly (Tests passing)
 
-### Phase 3: Command Migration (Days 5-12) 🔄
+### Phase 3: Command Migration (Days 5-12) ✅
 Migrate each command module individually, in order of dependency:
 
 #### Basic Commands ✅
@@ -49,14 +49,20 @@ Migrate each command module individually, in order of dependency:
   - [x] Delete dataset
   - [x] Push to HuggingFace Hub
 
-#### Advanced Functionality
-- [ ] `training_app`: Model training commands 🔄
-- [ ] `extraction_app`: Extraction pipeline commands
-- [ ] `schemas_app`: Schema management
+#### Advanced Functionality ✅
+- [x] `training_app`: Model training commands
+- [x] `extraction_app`: Extraction pipeline commands
+- [x] `schemas_app`: Schema management
 
-### Phase 4: Integration and Testing (Days 13-15)
-- [ ] Integrate all command modules with main CLI app
-- [ ] Write comprehensive tests for each command
+### Phase 4: Integration and Testing (Days 13-15) 🔄
+- [x] Integrate all command modules with main CLI app
+- [x] Write comprehensive tests for each command
+  - [x] Test core app functionality and registration
+  - [x] Test workspace management commands
+  - [x] Test dataset management commands
+  - [ ] Test user management commands
+  - [ ] Test schema management commands
+  - [ ] Test training and extraction commands
 - [ ] Test with actual Argilla v2 server
 - [ ] Fix any compatibility issues
 - [ ] Document any API differences between v1 and v2
@@ -96,41 +102,33 @@ argilla = "argilla.cli.app:app"
 - [x] Phase 3: Command Migration - User Management ✅
 - [x] Phase 3: Command Migration - Workspace Management ✅
 - [x] Phase 3: Command Migration - Dataset Management ✅
-- [ ] Phase 3: Command Migration - Advanced Functionality 🔄
-- [ ] Phase 4: Integration and Testing
+- [x] Phase 3: Command Migration - Advanced Functionality ✅
+- [x] Phase 4: Integration and Testing - Main app integration ✅
+- [x] Phase 4: Integration and Testing - Initial command testing ✅
+- [ ] Phase 4: Integration and Testing - Complete test coverage 🔄
+- [ ] Phase 4: Integration and Testing - Live server testing 🔄
 - [ ] Phase 5: Documentation and Finalization
 
-## Implementation Plan for Next Steps
+## Next Steps
 
-### Phase 3: Command Migration - Next Steps
-1. ✅ Basic Commands
-   - ✅ `info_app`: Server information commands
-   - ✅ `login_app`: Authentication commands
-   - ✅ `logout_app`: Logout functionality
-   - ✅ `whoami_app`: User identification
+### Complete Testing
+1. Create test files for remaining command modules:
+   - [ ] Test user management commands
+   - [ ] Test schema management commands
+   - [ ] Test training and extraction commands
 
-2. ✅ User Management Commands (`users_app`)
-   - [x] Implement user creation
-   - [x] Implement user listing
-   - [x] Implement user deletion
-   - [x] Write tests for user management commands
+2. Live Server Testing:
+   - [ ] Set up a local Argilla v2 server for testing
+   - [ ] Test all command modules against the live server
+   - [ ] Document any API compatibility issues
 
-3. ✅ Workspace Management Commands (`workspaces_app`)
-   - [x] Implement workspace creation
-   - [x] Implement workspace listing
-   - [x] Implement adding users to workspaces
-   - [x] Implement removing users from workspaces
+### Documentation
+1. Update CLI documentation:
+   - [ ] Create comprehensive command reference
+   - [ ] Document new features and improvements
+   - [ ] Update installation instructions
 
-4. ✅ Dataset Management Commands (`datasets_app`)
-   - [x] Implement dataset creation
-   - [x] Implement dataset listing
-   - [x] Implement dataset deletion
-   - [x] Implement push to HuggingFace Hub
-
-5. 🔄 Advanced Functionality
-   - [ ] Examine v1 implementation in `argilla-v1/src/argilla_v1/cli/training`
-   - [ ] Implement training commands
-   - [ ] Examine v1 implementation in `argilla-v1/src/argilla_v1/cli/extraction`
-   - [ ] Implement extraction commands
-   - [ ] Examine v1 implementation in `argilla-v1/src/argilla_v1/cli/schemas`
-   - [ ] Implement schema management commands
+2. Create migration guide:
+   - [ ] Document differences between v1 and v2 CLI
+   - [ ] Provide examples for common use cases
+   - [ ] Create upgrade path instructions
