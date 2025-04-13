@@ -43,21 +43,21 @@ def test_datasets_create_command_help(runner):
     """Test the help message for the 'create' subcommand."""
     result = runner.invoke(app, ["datasets", "create", "--help"])
     assert result.exit_code == 0
-    assert "Create a new dataset" in result.stdout
+    assert "Creates a new dataset" in result.stdout
 
 
 def test_datasets_delete_command_help(runner):
     """Test the help message for the 'delete' subcommand."""
     result = runner.invoke(app, ["datasets", "delete", "--help"])
     assert result.exit_code == 0
-    assert "Delete a dataset" in result.stdout
+    assert "Deletes a dataset" in result.stdout
 
 
 def test_datasets_push_to_hf_command_help(runner):
     """Test the help message for the 'push-to-huggingface' subcommand."""
     result = runner.invoke(app, ["datasets", "push-to-huggingface", "--help"])
     assert result.exit_code == 0
-    assert "Push dataset to HuggingFace" in result.stdout
+    assert "Pushes a dataset to HuggingFace Hub" in result.stdout
 
 
 @patch("argilla.cli.datasets.__main__.list_datasets")
