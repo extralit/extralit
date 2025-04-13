@@ -159,46 +159,54 @@ def list_users(
                 "updated_at": datetime.now(),
             }
         ]
-
-        # Apply filters if specified
+        
+        # Apply filters if provided
         filtered_users = mock_users
         if workspace:
             filtered_users = [user for user in filtered_users if workspace in user["workspaces"]]
         if role:
             filtered_users = [user for user in filtered_users if user["role"] == role]
-
-        # Create and display the table
-        table = Table(title="Users", show_lines=True)
-        for column in (
-            "ID",
-            "Username",
-            "Role",
-            "First name",
-            "Last name",
-            "Workspaces",
-            "Creation Date",
-            "Last Updated Date",
-        ):
-            table.add_column(column)
-
+        
+        # Create a table to display users
+        table = Table(show_header=True, header_style="bold blue")
+        table.add_column("ID")
+        table.add_column("Username")
+        table.add_column("Role")
+        table.add_column("Full Name")
+        table.add_column("Workspaces")
+        
         for user in filtered_users:
-            workspaces_text = "\n".join([f"• {ws}" for ws in user["workspaces"]])
+            full_name = f"{user['first_name']} {user['last_name']}".strip()
+            workspaces = ", ".join(user["workspaces"])
             table.add_row(
                 user["id"],
                 user["username"],
                 user["role"],
-                user["first_name"],
-                user["last_name"],
-                workspaces_text,
-                user["inserted_at"].isoformat(sep=" "),
-                user["updated_at"].isoformat(sep=" "),
+                full_name,
+                workspaces
             )
-
-        Console().print(table)
-
+        
+        console = Console()
+        
+        if not filtered_users:
+            message = "No users found"
+            if workspace:
+                message += f" in workspace '{workspace}'"
+            if role:
+                message += f" with role '{role}'"
+            
+            panel = get_argilla_themed_panel(
+                message,
+                title="Users",
+                title_align="left",
+            )
+            console.print(panel)
+        else:
+            console.print(table)
+            
     except RuntimeError:
         panel = get_argilla_themed_panel(
-            "An unexpected error occurred when trying to retrieve the list of users from the Extralit server.",
+            "An unexpected error occurred when trying to list users.",
             title="Unexpected error",
             title_align="left",
             success=False,

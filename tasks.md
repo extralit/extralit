@@ -58,7 +58,7 @@ Migrate each command module individually, in order of dependency:
 - [x] Integrate all command modules with main CLI app
 - [x] Write comprehensive tests for each command
   - [x] Test core app functionality and registration
-  - [x] Test workspace management commands
+  - [x] Test workspace management commands ✅ (Fixed on April 14, 2025)
   - [x] Test dataset management commands
   - [ ] Test user management commands
   - [ ] Test schema management commands
@@ -132,3 +132,10 @@ argilla = "argilla.cli.app:app"
    - [ ] Document differences between v1 and v2 CLI
    - [ ] Provide examples for common use cases
    - [ ] Create upgrade path instructions
+
+## Recent Progress (April 14, 2025)
+- Fixed issues with workspace commands tests:
+  - Updated `test_workspaces_add_user_command_help` and `test_workspaces_delete_user_command_help` tests to include the required `--name` parameter before the command name
+  - Fixed the mock data in `test_workspaces_list` to use proper datetime objects instead of strings
+  - Updated the mocking approach in `test_workspaces_create`, `test_workspaces_add_user`, and `test_workspaces_delete_user` to correctly test the command functionality
+- All workspace management command tests are now passing successfully
