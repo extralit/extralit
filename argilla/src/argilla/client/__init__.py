@@ -19,11 +19,11 @@ Provides a basic client implementation for the CLI commands.
 
 import os
 import json
-import time
 import requests
+import time
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Optional, List, Any, Union
+from typing import Dict, Optional, List, Any
 
 class DatasetType(str, Enum):
     """Dataset types in the system."""
@@ -1029,6 +1029,412 @@ class Argilla:
             print(f"Error exporting extraction data: {str(e)}")
             raise RuntimeError(f"Failed to export extraction data: {str(e)}")
 
+    def list_schemas(self, workspace: str, name: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List schemas in a workspace.
+
+        Args:
+            workspace: The name of the workspace to list schemas from.
+            name: Optional name filter for schemas.
+
+        Returns:
+            List[Dict[str, Any]]: List of schemas.
+
+        Raises:
+            ValueError: If the workspace does not exist.
+            RuntimeError: If there was an error listing schemas.
+        """
+        try:
+            # Get workspace ID
+            workspace_id = self._get_workspace_id(workspace)
+            if not workspace_id:
+                raise ValueError(f"Workspace with name='{workspace}' does not exist.")
+
+            # Build the URL with query parameters
+            url = f"{self.api_url}/api/v1/workspaces/{workspace_id}/schemas"
+            params = {}
+
+            if name:
+                params["name"] = name
+
+            # Make the API call
+            response = requests.get(
+                url,
+                params=params,
+                headers=self._get_auth_headers()
+            )
+            response.raise_for_status()
+
+            # Parse the response
+            schemas_data = response.json()
+
+            # Transform the API response to match our expected format
+            schemas = []
+            for item in schemas_data.get("items", []):
+                schema = {
+                    "id": str(item.get("id")),
+                    "name": item.get("name"),
+                    "description": item.get("description", ""),
+                    "version": item.get("version", "1.0.0"),
+                    "created_at": datetime.fromisoformat(item.get("created_at")).strftime("%Y-%m-%d %H:%M:%S") if item.get("created_at") else "",
+                    "updated_at": datetime.fromisoformat(item.get("updated_at")).strftime("%Y-%m-%d %H:%M:%S") if item.get("updated_at") else "",
+                }
+                schemas.append(schema)
+
+            return schemas
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                raise ValueError(f"Workspace with name='{workspace}' does not exist.")
+            raise RuntimeError(f"Failed to list schemas: {str(e)}")
+        except Exception as e:
+            # Log the error and raise a RuntimeError
+            print(f"Error listing schemas: {str(e)}")
+            raise RuntimeError(f"Failed to list schemas: {str(e)}")
+
+    def get_schema(self, workspace: str, schema_id: str) -> Dict[str, Any]:
+        """Get a schema by ID.
+
+        Args:
+            workspace: The name of the workspace containing the schema.
+            schema_id: The ID of the schema to get.
+
+        Returns:
+            Dict[str, Any]: The schema.
+
+        Raises:
+            ValueError: If the workspace or schema does not exist.
+            RuntimeError: If there was an error getting the schema.
+        """
+        try:
+            # Get workspace ID
+            workspace_id = self._get_workspace_id(workspace)
+            if not workspace_id:
+                raise ValueError(f"Workspace with name='{workspace}' does not exist.")
+
+            # Make the API call
+            response = requests.get(
+                f"{self.api_url}/api/v1/workspaces/{workspace_id}/schemas/{schema_id}",
+                headers=self._get_auth_headers()
+            )
+            response.raise_for_status()
+
+            # Parse the response
+            schema_data = response.json()
+
+            # Transform the API response to match our expected format
+            schema = {
+                "id": str(schema_data.get("id")),
+                "name": schema_data.get("name"),
+                "description": schema_data.get("description", ""),
+                "version": schema_data.get("version", "1.0.0"),
+                "content": schema_data.get("content", {}),
+                "created_at": datetime.fromisoformat(schema_data.get("created_at")).strftime("%Y-%m-%d %H:%M:%S") if schema_data.get("created_at") else "",
+                "updated_at": datetime.fromisoformat(schema_data.get("updated_at")).strftime("%Y-%m-%d %H:%M:%S") if schema_data.get("updated_at") else "",
+            }
+
+            return schema
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                if "schema" in str(e).lower():
+                    raise ValueError(f"Schema with ID='{schema_id}' does not exist in workspace='{workspace}'.")
+                else:
+                    raise ValueError(f"Workspace with name='{workspace}' does not exist.")
+            raise RuntimeError(f"Failed to get schema: {str(e)}")
+        except Exception as e:
+            # Log the error and raise a RuntimeError
+            print(f"Error getting schema: {str(e)}")
+            raise RuntimeError(f"Failed to get schema: {str(e)}")
+
+    def delete_schema(self, workspace: str, schema_id: str) -> bool:
+        """Delete a schema.
+
+        Args:
+            workspace: The name of the workspace containing the schema.
+            schema_id: The ID of the schema to delete.
+
+        Returns:
+            bool: True if the schema was deleted successfully.
+
+        Raises:
+            ValueError: If the workspace or schema does not exist.
+            RuntimeError: If there was an error deleting the schema.
+        """
+        try:
+            # First, check if the schema exists
+            self.get_schema(workspace=workspace, schema_id=schema_id)
+
+            # Get workspace ID
+            workspace_id = self._get_workspace_id(workspace)
+
+            # Make the API call to delete the schema
+            response = requests.delete(
+                f"{self.api_url}/api/v1/workspaces/{workspace_id}/schemas/{schema_id}",
+                headers=self._get_auth_headers()
+            )
+            response.raise_for_status()
+
+            # Return success
+            return True
+        except ValueError:
+            # Re-raise if the schema or workspace doesn't exist
+            raise
+        except Exception as e:
+            # Log the error and raise a RuntimeError
+            print(f"Error deleting schema: {str(e)}")
+            raise RuntimeError(f"Failed to delete schema: {str(e)}")
+
+    def upload_schema(self, workspace: str, schema_file: str, overwrite: bool = False) -> Dict[str, Any]:
+        """Upload a schema file to a workspace.
+
+        Args:
+            workspace: The name of the workspace to upload the schema to.
+            schema_file: The path to the schema file to upload.
+            overwrite: Whether to overwrite an existing schema with the same name.
+
+        Returns:
+            Dict[str, Any]: The uploaded schema.
+
+        Raises:
+            ValueError: If the workspace does not exist or the schema file is invalid.
+            RuntimeError: If there was an error uploading the schema.
+        """
+        try:
+            # Get workspace ID
+            workspace_id = self._get_workspace_id(workspace)
+            if not workspace_id:
+                raise ValueError(f"Workspace with name='{workspace}' does not exist.")
+
+            # Read the schema file
+            with open(schema_file, 'r') as f:
+                schema_content = json.load(f)
+
+            # Extract schema name from the file path
+            schema_name = os.path.splitext(os.path.basename(schema_file))[0]
+
+            # Check if a schema with the same name already exists
+            if not overwrite:
+                existing_schemas = self.list_schemas(workspace=workspace, name=schema_name)
+                if any(s["name"] == schema_name for s in existing_schemas):
+                    raise ValueError(f"Schema with name='{schema_name}' already exists in workspace='{workspace}'. Use overwrite=True to replace it.")
+
+            # Prepare the request payload
+            payload = {
+                "name": schema_name,
+                "content": schema_content
+            }
+
+            # Get auth headers and add Content-Type
+            headers = self._get_auth_headers()
+            headers["Content-Type"] = "application/json"
+
+            # Make the API call to upload the schema
+            response = requests.post(
+                f"{self.api_url}/api/v1/workspaces/{workspace_id}/schemas",
+                json=payload,
+                headers=headers
+            )
+            response.raise_for_status()
+
+            # Parse the response
+            uploaded_schema = response.json()
+
+            # Transform the API response to match our expected format
+            schema = {
+                "id": str(uploaded_schema.get("id")),
+                "name": uploaded_schema.get("name"),
+                "description": uploaded_schema.get("description", ""),
+                "version": uploaded_schema.get("version", "1.0.0"),
+                "created_at": datetime.fromisoformat(uploaded_schema.get("created_at")).strftime("%Y-%m-%d %H:%M:%S") if uploaded_schema.get("created_at") else "",
+                "updated_at": datetime.fromisoformat(uploaded_schema.get("updated_at")).strftime("%Y-%m-%d %H:%M:%S") if uploaded_schema.get("updated_at") else "",
+            }
+
+            return schema
+        except json.JSONDecodeError:
+            raise ValueError(f"Invalid JSON in schema file: {schema_file}")
+        except FileNotFoundError:
+            raise ValueError(f"Schema file not found: {schema_file}")
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                raise ValueError(f"Workspace with name='{workspace}' does not exist.")
+            raise RuntimeError(f"Failed to upload schema: {str(e)}")
+        except Exception as e:
+            # Log the error and raise a RuntimeError
+            print(f"Error uploading schema: {str(e)}")
+            raise RuntimeError(f"Failed to upload schema: {str(e)}")
+
+    def train_model(self, name: str, framework: str, workspace: Optional[str] = None, limit: Optional[int] = None,
+                  query: Optional[str] = None, model: Optional[str] = None, train_size: float = 1.0,
+                  seed: int = 42, device: int = -1, output_dir: str = "model",
+                  config_kwargs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Train a model using a dataset.
+
+        Args:
+            name: The name of the dataset to use for training.
+            framework: The framework to use for training (spacy, transformers, setfit, peft).
+            workspace: Optional workspace name containing the dataset.
+            limit: Optional limit on the number of records to use.
+            query: Optional query to filter the dataset.
+            model: Optional model name or path to use for training.
+            train_size: The proportion of data to use for training (default: 1.0).
+            seed: Random seed for reproducibility (default: 42).
+            device: GPU device ID to use for training (-1 for CPU, default: -1).
+            output_dir: Directory to save the trained model (default: "model").
+            config_kwargs: Optional additional configuration parameters.
+
+        Returns:
+            Dict[str, Any]: Training results including model path and metrics.
+
+        Raises:
+            ValueError: If the dataset or framework is invalid.
+            RuntimeError: If there was an error during training.
+        """
+        try:
+            # Validate the framework
+            valid_frameworks = ["spacy", "transformers", "setfit", "peft"]
+            if framework.lower() not in valid_frameworks:
+                raise ValueError(f"Invalid framework '{framework}'. Choose from {', '.join(valid_frameworks)}")
+
+            # Get dataset ID
+            dataset_id = None
+            try:
+                dataset = self.get_dataset(name=name, workspace=workspace)
+                dataset_id = dataset["id"]
+            except ValueError:
+                raise ValueError(f"Dataset with name='{name}' does not exist in workspace='{workspace or 'default'}'.")
+
+            # Get workspace ID if provided
+            workspace_id = None
+            if workspace:
+                workspace_id = self._get_workspace_id(workspace)
+
+            # Prepare the request payload
+            payload = {
+                "dataset_id": dataset_id,
+                "framework": framework.lower(),
+                "train_size": train_size,
+                "seed": seed,
+                "device": device,
+                "output_dir": output_dir,
+            }
+
+            if limit is not None:
+                payload["limit"] = limit
+
+            if query is not None:
+                payload["query"] = query
+
+            if model is not None:
+                payload["model"] = model
+
+            if config_kwargs is not None:
+                payload["config_kwargs"] = config_kwargs
+
+            # Get auth headers and add Content-Type
+            headers = self._get_auth_headers()
+            headers["Content-Type"] = "application/json"
+
+            # Make the API call to start training
+            url = f"{self.api_url}/api/v1/training"
+            if workspace_id:
+                url += f"?workspace_id={workspace_id}"
+
+            response = requests.post(
+                url,
+                json=payload,
+                headers=headers
+            )
+            response.raise_for_status()
+
+            # Parse the response
+            training_result = response.json()
+
+            # Transform the API response to match our expected format
+            result = {
+                "model_path": training_result.get("model_path", output_dir),
+                "metrics": training_result.get("metrics", {}),
+                "framework": framework.lower(),
+                "dataset": name,
+                "workspace": workspace or "default",
+            }
+
+            return result
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                if "dataset" in str(e).lower():
+                    raise ValueError(f"Dataset with name='{name}' does not exist in workspace='{workspace or 'default'}'.")
+                elif "workspace" in str(e).lower():
+                    raise ValueError(f"Workspace with name='{workspace}' does not exist.")
+            raise RuntimeError(f"Failed to start training: {str(e)}")
+        except Exception as e:
+            # Log the error and raise a RuntimeError
+            print(f"Error during training: {str(e)}")
+            raise RuntimeError(f"Failed to train model: {str(e)}")
+
+    def _get_dataset_records(self, dataset_id: str) -> List[Dict[str, Any]]:
+        """Get all records from a dataset.
+
+        Args:
+            dataset_id: The ID of the dataset to get records from.
+
+        Returns:
+            List[Dict[str, Any]]: List of dataset records.
+
+        Raises:
+            ValueError: If the dataset does not exist.
+            RuntimeError: If there was an error getting the dataset records.
+        """
+        try:
+            # Make the API call to get dataset records
+            response = requests.get(
+                f"{self.api_url}/api/v1/datasets/{dataset_id}/records",
+                headers=self._get_auth_headers()
+            )
+            response.raise_for_status()
+
+            # Parse the response
+            records_data = response.json()
+
+            # Return the records
+            return records_data.get("items", [])
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                raise ValueError(f"Dataset with ID='{dataset_id}' does not exist.")
+            raise RuntimeError(f"Failed to get dataset records: {str(e)}")
+        except Exception as e:
+            # Log the error and raise a RuntimeError
+            print(f"Error getting dataset records: {str(e)}")
+            raise RuntimeError(f"Failed to get dataset records: {str(e)}")
+
+    def _convert_to_hf_dataset(self, records: List[Dict[str, Any]]) -> Any:
+        """Convert Argilla records to a HuggingFace dataset.
+
+        Args:
+            records: List of Argilla dataset records.
+
+        Returns:
+            Any: A HuggingFace dataset object.
+
+        Raises:
+            ImportError: If the datasets package is not installed.
+            RuntimeError: If there was an error converting the records.
+        """
+        try:
+            from datasets import Dataset
+            import pandas as pd
+
+            # Convert records to a pandas DataFrame
+            df = pd.DataFrame(records)
+
+            # Convert DataFrame to a HuggingFace dataset
+            hf_dataset = Dataset.from_pandas(df)
+
+            return hf_dataset
+        except ImportError:
+            raise ImportError("datasets package is not installed. Please install it with 'pip install datasets'.")
+        except Exception as e:
+            # Log the error and raise a RuntimeError
+            print(f"Error converting records to HuggingFace dataset: {str(e)}")
+            raise RuntimeError(f"Failed to convert records to HuggingFace dataset: {str(e)}")
+
     def push_dataset_to_huggingface(self, name: str, repo_id: str, private: bool = False,
                                    token: Optional[str] = None, workspace: Optional[str] = None) -> bool:
         """Push a dataset to HuggingFace Hub.
@@ -1062,30 +1468,85 @@ class Argilla:
 
         # Make the API call to push the dataset to HuggingFace
         try:
-            # This endpoint might not exist in the API, so we're implementing a simplified version
-            # In a real implementation, we would need to check if this endpoint exists
             # Get auth headers and add Content-Type
             headers = self._get_auth_headers()
             headers["Content-Type"] = "application/json"
 
-            response = requests.post(
-                f"{self.api_url}/api/v1/datasets/{dataset_id}/push-to-huggingface",
-                json=payload,
-                headers=headers
-            )
+            # First, check if the endpoint exists by making a HEAD request
+            try:
+                head_response = requests.head(
+                    f"{self.api_url}/api/v1/datasets/{dataset_id}/push-to-huggingface",
+                    headers=headers
+                )
+                endpoint_exists = head_response.status_code != 404
+            except Exception:
+                # If the HEAD request fails, assume the endpoint exists and proceed
+                endpoint_exists = True
 
-            # If the endpoint doesn't exist, simulate success after a delay
-            if response.status_code == 404:
-                print("Warning: Push to HuggingFace endpoint not found. Simulating success.")
-                time.sleep(2)  # Simulate delay
+            if not endpoint_exists:
+                # If the endpoint doesn't exist, use the HuggingFace Hub API directly
+                try:
+                    from huggingface_hub import HfApi
+                    import tempfile
+                    import os
+
+                    # Create a temporary directory to store the dataset
+                    with tempfile.TemporaryDirectory() as tmp_dir:
+                        # Get the dataset from Argilla
+                        dataset_records = self._get_dataset_records(dataset_id)
+
+                        # Convert to HuggingFace dataset format
+                        hf_dataset = self._convert_to_hf_dataset(dataset_records)
+
+                        # Save the dataset to the temporary directory
+                        dataset_path = os.path.join(tmp_dir, "dataset")
+                        hf_dataset.save_to_disk(dataset_path)
+
+                        # Initialize the HuggingFace API
+                        hf_api = HfApi(token=token)
+
+                        # Push the dataset to HuggingFace Hub
+                        hf_api.upload_folder(
+                            folder_path=dataset_path,
+                            repo_id=repo_id,
+                            repo_type="dataset",
+                            private=private
+                        )
+
+                    return True
+                except ImportError:
+                    raise RuntimeError("HuggingFace Hub API not available. Please install huggingface_hub and datasets packages.")
+                except Exception as e:
+                    raise RuntimeError(f"Failed to push dataset to HuggingFace Hub: {str(e)}")
+            else:
+                # If the endpoint exists, use it
+                response = requests.post(
+                    f"{self.api_url}/api/v1/datasets/{dataset_id}/push-to-huggingface",
+                    json=payload,
+                    headers=headers
+                )
+                response.raise_for_status()
+
+                # Parse the response to check for success
+                result = response.json()
+                if not result.get("success", False):
+                    error_message = result.get("error", "Unknown error")
+                    raise RuntimeError(f"Failed to push dataset to HuggingFace Hub: {error_message}")
+
                 return True
-
-            response.raise_for_status()
-            return True
+        except requests.exceptions.HTTPError as e:
+            # Handle specific HTTP errors
+            if e.response.status_code == 401:
+                raise ValueError("Authentication failed. Please check your API key or token.")
+            elif e.response.status_code == 403:
+                raise ValueError("You don't have permission to push this dataset to HuggingFace Hub.")
+            elif e.response.status_code == 404:
+                raise ValueError(f"Dataset with ID '{dataset_id}' not found.")
+            else:
+                raise RuntimeError(f"Failed to push dataset to HuggingFace Hub: {str(e)}")
         except Exception as e:
             # Log the error and raise a RuntimeError
             print(f"Error pushing dataset to HuggingFace: {str(e)}")
-            # For now, we'll just simulate success after a delay
-            time.sleep(2)  # Simulate delay
-
-        return True
+            # Add a small delay before raising the error to avoid overwhelming the server
+            time.sleep(0.5)
+            raise RuntimeError(f"Failed to push dataset to HuggingFace Hub: {str(e)}")

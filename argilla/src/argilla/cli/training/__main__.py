@@ -47,7 +47,7 @@ def framework_callback(value: str):
 def train(
     name: str = typer.Option(default=None, help="The name of the dataset to be used for training."),
     framework: Framework = typer.Option(
-        default=None, 
+        default=None,
         callback=framework_callback,
         help="The framework to be used for training."
     ),
@@ -63,7 +63,7 @@ def train(
 ):
     """Start training a model using Extralit datasets."""
     init_callback()
-    
+
     try:
         # Parse the JSON configuration
         try:
@@ -77,9 +77,11 @@ def train(
             )
             Console().print(panel)
             raise typer.Exit(code=1)
-        
-        # In a real implementation, we would initialize an actual Trainer
-        # For now, we'll just display the training configuration
+
+        # Initialize the client
+        client = init_callback()
+
+        # Display training configuration
         panel = get_argilla_themed_panel(
             f"Starting model training with:\n"
             f"- Dataset: {name or 'Not specified'} (workspace: {workspace or 'default'})\n"
@@ -92,29 +94,42 @@ def train(
             title_align="left",
         )
         Console().print(panel)
-        
-        # Simulate training process with a spinner
+
+        # Start training process with a spinner
         from rich.spinner import Spinner
         from rich.live import Live
-        import time
-        
+
         spinner = Spinner(
             name="dots",
             text="Training in progress...",
         )
-        
+
         with Live(spinner, refresh_per_second=20):
-            # In a real implementation, we would call the actual training function
-            # For now, we'll just simulate a delay
-            time.sleep(3)  # Simulate training time
-        
+            # Call the actual training function
+            result = client.train_model(
+                name=name,
+                framework=framework.value,
+                workspace=workspace,
+                limit=limit,
+                query=query,
+                model=model,
+                train_size=train_size,
+                seed=seed,
+                device=device,
+                output_dir=output_dir,
+                config_kwargs=config_kwargs
+            )
+
+        # Display training results
+        metrics_str = "\n".join([f"- {k}: {v}" for k, v in result.get("metrics", {}).items()])
         panel = get_argilla_themed_panel(
-            f"Model trained successfully and saved to {output_dir}",
+            f"Model trained successfully and saved to {result['model_path']}\n"
+            f"Metrics:\n{metrics_str if metrics_str else '- No metrics available'}",
             title="Training Complete",
             title_align="left",
         )
         Console().print(panel)
-        
+
     except ValueError as e:
         panel = get_argilla_themed_panel(
             str(e),
@@ -124,7 +139,7 @@ def train(
         )
         Console().print(panel)
         raise typer.Exit(code=1)
-        
+
     except Exception as e:
         panel = get_argilla_themed_panel(
             "An unexpected error occurred during training.",

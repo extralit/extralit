@@ -1,9 +1,8 @@
 from pathlib import Path
+import os
+import glob
 from typing import Dict, Optional, List
 import typer
-
-from argilla.client.workspaces import Workspace
-from extralit.extraction.models import SchemaStructure
 
 def upload_schemas(
     ctx: typer.Context,
@@ -24,51 +23,105 @@ def upload_schemas(
         help="List of schema names to exclude from the update.",
     ),
 ) -> None:
-    from argilla.cli.rich import echo_in_panel, get_argilla_themed_table
-
+    from argilla.cli.rich import get_argilla_themed_panel
     from rich.console import Console
+    from rich.table import Table
 
     console = Console()
 
     try:
-        workspace: Workspace = ctx.obj["workspace"]
-
-        update_schemas = SchemaStructure.from_dir(path, exclude=exclude)
-
-        if not update_schemas.schemas:
-            raise FileNotFoundError(f"No schemas found in directory '{path}'.")
+        # Get client and workspace from context
+        client = ctx.obj["client"]
+        workspace = ctx.obj["workspace"]
         
-        uploaded_files = workspace.update_schemas(update_schemas, check_existing=not overwrite)
-
-        if uploaded_files.objects:
-            echo_in_panel(
-                f"Schemas in workspace '{workspace.name}' have been updated successfully.",
-                title="Schemas updated",
+        # Find all JSON files in the directory
+        schema_files = glob.glob(os.path.join(path, "*.json"))
+        
+        if not schema_files:
+            panel = get_argilla_themed_panel(
+                f"No schema files found in directory '{path}'.",
+                title="No schemas found",
                 title_align="left",
+                success=False,
             )
-
-        table = get_argilla_themed_table(title=f"Updated Workspace (name='{workspace.name}') Schemas", show_lines=True)
-        for column in ("Schema Name", "Version ID", "Version Tag", "Last Update Date"):
-            table.add_column(column, justify="left")
-
-        for uploaded_file in uploaded_files.objects:
-            updated_schema = workspace.list_files(uploaded_file.object_name, include_version=True)
-            if updated_schema.objects:
-                file_object = updated_schema.objects[0]
-                table.add_row(
-                    file_object.object_name.split("/", 1)[-1],
-                    file_object.version_id,
-                    file_object.version_tag,
-                    file_object.last_modified.isoformat(sep=" "),
+            console.print(panel)
+            raise typer.Exit(code=1)
+        
+        # Filter out excluded schemas
+        if exclude:
+            schema_files = [f for f in schema_files if os.path.splitext(os.path.basename(f))[0] not in exclude]
+        
+        if not schema_files:
+            panel = get_argilla_themed_panel(
+                f"All schema files in directory '{path}' were excluded.",
+                title="No schemas to upload",
+                title_align="left",
+                success=False,
+            )
+            console.print(panel)
+            raise typer.Exit(code=1)
+        
+        # Upload each schema file
+        uploaded_schemas = []
+        for schema_file in schema_files:
+            try:
+                schema = client.upload_schema(
+                    workspace=workspace["name"],
+                    schema_file=schema_file,
+                    overwrite=overwrite
                 )
-
-        console.print(table, new_line_start=True)
+                uploaded_schemas.append(schema)
+            except ValueError as e:
+                if "already exists" in str(e) and not overwrite:
+                    console.print(f"[yellow]Skipping schema '{os.path.basename(schema_file)}': {str(e)}[/yellow]")
+                else:
+                    console.print(f"[red]Error uploading schema '{os.path.basename(schema_file)}': {str(e)}[/red]")
+            except Exception as e:
+                console.print(f"[red]Error uploading schema '{os.path.basename(schema_file)}': {str(e)}[/red]")
+        
+        if not uploaded_schemas:
+            panel = get_argilla_themed_panel(
+                f"No schemas were uploaded to workspace '{workspace['name']}'.",
+                title="No schemas uploaded",
+                title_align="left",
+                success=False,
+            )
+            console.print(panel)
+            return
+        
+        # Show success message
+        panel = get_argilla_themed_panel(
+            f"Successfully uploaded {len(uploaded_schemas)} schema(s) to workspace '{workspace['name']}'.",
+            title="Schemas uploaded",
+            title_align="left",
+        )
+        console.print(panel)
+        
+        # Create and display the table of uploaded schemas
+        table = Table(title=f"Uploaded Schemas in workspace '{workspace['name']}'")
+        table.add_column("ID", justify="left")
+        table.add_column("Name", justify="left")
+        table.add_column("Version", justify="center")
+        table.add_column("Created", justify="center")
+        table.add_column("Updated", justify="center")
+        
+        for schema in uploaded_schemas:
+            table.add_row(
+                schema["id"],
+                schema["name"],
+                schema["version"],
+                schema["created_at"],
+                schema["updated_at"],
+            )
+        
+        console.print(table)
 
     except Exception as e:
-        echo_in_panel(
-            f"Unable to update schemas in workspace:\n{e}", 
+        panel = get_argilla_themed_panel(
+            f"Unable to update schemas in workspace: {str(e)}", 
             title="Unexpected error",
             title_align="left",
             success=False,
         )
+        console.print(panel)
         raise typer.Exit(code=1) from e

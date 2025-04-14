@@ -50,15 +50,17 @@ def callback(
         )
 
     try:
-        # In a real implementation, we would validate the workspace
-        # For now, we'll simulate success with a mock workspace
-        mock_workspace = {
-            "id": "1" if workspace == "default" else "2",
-            "name": workspace,
-        }
+        # Initialize the client
+        client = init_callback()
 
+        # Validate the workspace
+        from argilla.cli.workspaces.__main__ import get_workspace
+        workspace_data = get_workspace(workspace)
+
+        # Store the client and workspace in the context
         ctx.obj = {
-            "workspace": mock_workspace,
+            "client": client,
+            "workspace": workspace_data,
         }
 
     except ValueError as e:
@@ -157,13 +159,11 @@ def list_schemas(
     try:
         workspace = ctx.obj["workspace"]
 
-        # In a real implementation, we would fetch schemas from the server
-        # For now, we'll use mock data
-        schemas = get_mock_schemas()
+        # Get client from context
+        client = ctx.obj["client"]
 
-        # Apply filter if specified
-        if name:
-            schemas = [s for s in schemas if name.lower() in s["name"].lower()]
+        # Fetch schemas from the server with optional filtering
+        schemas = client.list_schemas(workspace=workspace["name"], name=name)
 
         if not schemas:
             message = f"No schemas found in workspace '{workspace['name']}'"
@@ -219,14 +219,13 @@ def delete_schema(
     try:
         workspace = ctx.obj["workspace"]
 
-        # In a real implementation, we would delete the schema via the API
-        # For now, we'll simulate this process
+        # Get client from context
+        client = ctx.obj["client"]
 
-        # Check if the schema exists
-        schemas = get_mock_schemas()
-        schema = next((s for s in schemas if s["id"] == schema_id), None)
-
-        if not schema:
+        try:
+            # Get the schema to check if it exists and to display its name
+            schema = client.get_schema(workspace=workspace["name"], schema_id=schema_id)
+        except ValueError:
             panel = get_argilla_themed_panel(
                 f"Schema with ID '{schema_id}' not found in workspace '{workspace['name']}'",
                 title="Schema not found",
@@ -246,7 +245,10 @@ def delete_schema(
             Console().print(panel)
             return
 
-        # Simulate deletion
+        # Delete the schema via the API
+        client.delete_schema(workspace=workspace["name"], schema_id=schema_id)
+
+        # Show success message
         panel = get_argilla_themed_panel(
             f"Schema '{schema['name']}' (ID: {schema_id}) successfully deleted from workspace '{workspace['name']}'",
             title="Schema Deleted",
