@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from typing import Optional, Dict, Any, List
-from datetime import datetime
 from enum import Enum
 
 import typer
@@ -33,80 +32,22 @@ class DatasetType(str, Enum):
 
 
 # Helper functions for dataset operations
-def get_dataset(name: str, workspace: Optional[str] = None) -> Dict[str, Any]:
+def get_dataset(name: str, workspace: Optional[str] = None, client=None) -> Dict[str, Any]:
     """Get a dataset by name and optional workspace."""
-    # In a real implementation, we would fetch the dataset from the server
-    # For now, we'll simulate success if the name is valid
-    datasets = get_datasets()
-    for dataset in datasets:
-        if dataset["name"] == name and (workspace is None or dataset["workspace"] == workspace):
-            return dataset
-    
-    if workspace:
-        raise ValueError(f"Dataset with name={name} and workspace={workspace} not found.")
-    else:
-        raise ValueError(f"Dataset with name={name} not found. Try using '--workspace' option.")
+    # Use the client to get the dataset
+    if client is None:
+        client = init_callback()
+
+    return client.get_dataset(name=name, workspace=workspace)
 
 
-def get_datasets(workspace: Optional[str] = None, type_: Optional[DatasetType] = None) -> List[Dict[str, Any]]:
+def get_datasets(workspace: Optional[str] = None, type_: Optional[DatasetType] = None, client=None) -> List[Dict[str, Any]]:
     """Get list of datasets with optional filtering."""
-    # Mock datasets for development
-    mock_datasets = [
-        {
-            "id": "1",
-            "name": "sentiment-analysis",
-            "workspace": "default",
-            "type": DatasetType.TEXT_CLASSIFICATION,
-            "tags": {
-                "domain": "customer-support",
-                "language": "english"
-            },
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
-        },
-        {
-            "id": "2",
-            "name": "named-entity-recognition",
-            "workspace": "research",
-            "type": DatasetType.TOKEN_CLASSIFICATION,
-            "tags": {
-                "domain": "news",
-                "language": "english"
-            },
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
-        },
-        {
-            "id": "3",
-            "name": "text-summarization",
-            "workspace": "default",
-            "type": DatasetType.TEXT_GENERATION,
-            "tags": {
-                "domain": "articles",
-                "language": "english"
-            },
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
-        },
-        {
-            "id": "4",
-            "name": "user-feedback",
-            "workspace": "default",
-            "type": DatasetType.FEEDBACK,
-            "tags": {},
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
-        }
-    ]
-    
-    # Apply filters if specified
-    filtered_datasets = mock_datasets
-    if workspace:
-        filtered_datasets = [ds for ds in filtered_datasets if ds["workspace"] == workspace]
-    if type_:
-        filtered_datasets = [ds for ds in filtered_datasets if ds["type"] == type_]
-        
-    return filtered_datasets
+    # Use the client to list datasets
+    if client is None:
+        client = init_callback()
+
+    return client.list_datasets(workspace=workspace, type_=type_)
 
 
 # Typer app and callback
@@ -166,10 +107,12 @@ def list_datasets(
 ) -> None:
     """List datasets with optional filtering by workspace and type."""
     try:
-        # In a real implementation, we would fetch datasets from the server
-        # For now, we'll use mock data
-        datasets = get_datasets(workspace=workspace, type_=type_)
-        
+        # Initialize the client
+        client = init_callback()
+
+        # Get datasets using the client
+        datasets = client.list_datasets(workspace=workspace, type_=type_)
+
         table = Table(title="Datasets", show_lines=True)
         for column in ("ID", "Name", "Workspace", "Type", "Tags", "Creation Date", "Last Update Date"):
             table.add_column(column, justify="center" if column != "Tags" else "left")
@@ -181,7 +124,7 @@ def list_datasets(
                 tags_text += f"• [bold]{tag}[/bold]: {description}"
                 if i < len(dataset["tags"]) - 1:
                     tags_text += "\n"
-            
+
             table.add_row(
                 dataset["id"],
                 dataset["name"],
@@ -195,7 +138,7 @@ def list_datasets(
         Console().print(table)
     except Exception as e:
         panel = get_argilla_themed_panel(
-            "An unexpected error occurred when trying to list datasets.",
+            f"An unexpected error occurred when trying to list datasets: {str(e)}",
             title="Unexpected error",
             title_align="left",
             success=False,
@@ -210,8 +153,11 @@ def delete_dataset(ctx: typer.Context) -> None:
     dataset = ctx.obj
 
     try:
-        # In a real implementation, we would delete the dataset via the API
-        # For now, we'll just simulate success
+        # Initialize the client
+        client = init_callback()
+
+        # Delete the dataset using the client
+        client.delete_dataset(name=dataset["name"], workspace=dataset["workspace"])
         panel = get_argilla_themed_panel(
             f"Dataset with name={dataset['name']} and workspace={dataset['workspace']} deleted successfully",
             title="Dataset deleted",
@@ -242,7 +188,7 @@ def push_to_huggingface(
     try:
         from rich.live import Live
         from rich.spinner import Spinner
-        
+
         spinner = Spinner(
             name="dots",
             text=f"Pushing dataset with name={dataset['name']} and workspace={dataset['workspace']} to the"
@@ -250,11 +196,18 @@ def push_to_huggingface(
         )
 
         with Live(spinner, refresh_per_second=20):
-            # In a real implementation, we would push the dataset to HuggingFace Hub
-            # For now, we'll just simulate a delay and success
-            import time
-            time.sleep(2)  # Simulate delay
-            
+            # Initialize the client
+            client = init_callback()
+
+            # Push the dataset to HuggingFace Hub
+            client.push_dataset_to_huggingface(
+                name=dataset["name"],
+                repo_id=repo_id,
+                private=private,
+                token=token,
+                workspace=dataset["workspace"]
+            )
+
         panel = get_argilla_themed_panel(
             f"Dataset successfully pushed to the HuggingFace Hub at https://huggingface.co/{repo_id}",
             title="Dataset pushed",
@@ -290,21 +243,15 @@ def create_dataset(
 ) -> None:
     """Create a new dataset in the system."""
     try:
-        # In a real implementation, we would create the dataset via the API
-        # For now, we'll just simulate success
-        if not workspace:
-            workspace = "default"
-            
-        dataset = {
-            "id": "new-id",
-            "name": name,
-            "workspace": workspace,
-            "type": type_,
-            "tags": {},
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
-        }
-        
+        # Initialize the client
+        client = init_callback()
+
+        # Create the dataset using the client
+        dataset = client.create_dataset(name=name, type_=type_, workspace=workspace)
+
+        # Get the workspace from the created dataset
+        workspace = dataset["workspace"]
+
         panel = get_argilla_themed_panel(
             f"Dataset with name='{name}' successfully created in workspace='{workspace}'.",
             title="Dataset created",

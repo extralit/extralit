@@ -16,6 +16,7 @@ import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock
 from datetime import datetime
+import time
 
 from argilla.cli.app import app
 
@@ -41,7 +42,8 @@ def test_extraction_export_command_help(runner):
 
 
 @patch("rich.console.Console.print")
-def test_extraction_export_basic(mock_print, runner):
+@patch("time.sleep")  # Mock sleep to speed up the test
+def test_extraction_export_basic(mock_sleep, mock_print, runner):
     """Test basic extraction export command functionality."""
     result = runner.invoke(app, [
         "extraction",
@@ -52,18 +54,22 @@ def test_extraction_export_basic(mock_print, runner):
     ])
 
     assert result.exit_code == 0
-    mock_print.assert_called()
 
-    # Verify that Console.print was called
-    assert mock_print.called
+    # Verify that sleep was called to simulate export process
+    mock_sleep.assert_called_once()
 
-    # For now, we'll just verify that the command completed successfully
-    # In a real test, we would need to mock the API call and verify the response
+    # Verify that Console.print was called multiple times
+    assert mock_print.call_count >= 2
+
+    # Verify that the command completed successfully
+    # We can't easily check the content of the Panel object, so we'll just verify
+    # that the command completed successfully and the expected functions were called
 
 
 @patch("rich.console.Console.print")
-def test_extraction_export_with_format(mock_print, runner):
-    """Test extraction export command with format option."""
+@patch("time.sleep")  # Mock sleep to speed up the test
+def test_extraction_export_with_type(mock_sleep, mock_print, runner):
+    """Test extraction export command with type option."""
     result = runner.invoke(app, [
         "extraction",
         "--workspace", "research",
@@ -74,35 +80,42 @@ def test_extraction_export_with_format(mock_print, runner):
     ])
 
     assert result.exit_code == 0
-    mock_print.assert_called()
 
-    # Verify that Console.print was called
-    assert mock_print.called
+    # Verify that sleep was called to simulate export process
+    mock_sleep.assert_called_once()
 
-    # For now, we'll just verify that the command completed successfully
-    # In a real test, we would need to mock the API call and verify the response
+    # Verify that Console.print was called multiple times
+    assert mock_print.call_count >= 2
+
+    # Verify that the command completed successfully
+    # We can't easily check the content of the Panel object, so we'll just verify
+    # that the command completed successfully and the expected functions were called
 
 
 @patch("rich.console.Console.print")
-def test_extraction_export_with_filters(mock_print, runner):
-    """Test extraction export command with filters."""
+@patch("time.sleep")  # Mock sleep to speed up the test
+def test_extraction_export_with_different_type(mock_sleep, mock_print, runner):
+    """Test extraction export command with a different type."""
     result = runner.invoke(app, [
         "extraction",
         "--workspace", "research",
         "--env-file", ".env.test",
         "export",
         "--type", "feedback",
-        "--output", "exports"
+        "--output", "custom-exports"
     ])
 
     assert result.exit_code == 0
-    mock_print.assert_called()
 
-    # Verify that Console.print was called
-    assert mock_print.called
+    # Verify that sleep was called to simulate export process
+    mock_sleep.assert_called_once()
 
-    # For now, we'll just verify that the command completed successfully
-    # In a real test, we would need to mock the API call and verify the response
+    # Verify that Console.print was called multiple times
+    assert mock_print.call_count >= 2
+
+    # Verify that the command completed successfully
+    # We can't easily check the content of the Panel object, so we'll just verify
+    # that the command completed successfully and the expected functions were called
 
 
 @patch("rich.console.Console.print")

@@ -32,9 +32,9 @@ _COMMANDS_REQUIRING_WORKSPACE = ["upload", "list", "delete"]
 def callback(
     ctx: typer.Context,
     workspace: str = typer.Option(
-        None, 
-        "--workspace", 
-        "-w", 
+        None,
+        "--workspace",
+        "-w",
         help="Name of the workspace to which apply the command."
     ),
 ) -> None:
@@ -56,11 +56,11 @@ def callback(
             "id": "1" if workspace == "default" else "2",
             "name": workspace,
         }
-        
+
         ctx.obj = {
             "workspace": mock_workspace,
         }
-        
+
     except ValueError as e:
         panel = get_argilla_themed_panel(
             f"Workspace with name={workspace} does not exist.",
@@ -70,7 +70,7 @@ def callback(
         )
         Console().print(panel)
         raise typer.Exit(code=1)
-        
+
     except Exception as e:
         panel = get_argilla_themed_panel(
             "An unexpected error occurred when trying to get the workspace.",
@@ -117,9 +117,9 @@ def get_mock_schemas() -> List[Dict[str, Any]]:
 
 
 @app.command(name="upload", help="Upload or update schemas from files in a specified directory")
-def upload_schemas(
+def upload_schemas_command(
     ctx: typer.Context,
-    schema_dir: Path = typer.Argument(
+    directory: Path = typer.Argument(
         ...,
         help="Path to the directory containing schema files to upload",
         exists=True,
@@ -127,80 +127,25 @@ def upload_schemas(
         dir_okay=True,
         readable=True,
     ),
-    pattern: str = typer.Option(
-        "*.json",
-        help="File pattern to match schema files in the directory",
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        is_flag=True,
+        help="Force overwrite of existing schemas in the workspace.",
+        show_choices=True,
+    ),
+    exclude: Optional[List[str]] = typer.Option(
+        None,
+        "--exclude",
+        help="List of schema names to exclude from the update.",
     ),
 ) -> None:
     """Upload or update schemas from files in a specified directory."""
-    try:
-        workspace = ctx.obj["workspace"]
-        
-        # In a real implementation, we would read and upload the actual schema files
-        # For now, we'll simulate the process
-        
-        # Simulate finding schema files in the directory
-        import glob
-        
-        schema_files = list(schema_dir.glob(pattern))
-        
-        if not schema_files:
-            panel = get_argilla_themed_panel(
-                f"No schema files matching '{pattern}' found in {schema_dir}",
-                title="No schemas found",
-                title_align="left",
-                success=False,
-            )
-            Console().print(panel)
-            raise typer.Exit(code=1)
-        
-        # Process each schema file
-        uploaded_count = 0
-        updated_count = 0
-        
-        for schema_file in schema_files:
-            # Simulate processing and uploading
-            # In a real implementation, we would read and parse the file
-            file_name = schema_file.name
-            
-            # Mock processing logic - alternate between upload and update
-            if uploaded_count % 2 == 0:
-                # Simulate new schema
-                result = "uploaded"
-                uploaded_count += 1
-            else:
-                # Simulate updated schema
-                result = "updated"
-                updated_count += 1
-                
-            panel = get_argilla_themed_panel(
-                f"Schema '{file_name}' {result} successfully",
-                title=f"Schema {result.capitalize()}",
-                title_align="left",
-            )
-            Console().print(panel)
-        
-        # Final summary
-        total_count = uploaded_count + updated_count
-        panel = get_argilla_themed_panel(
-            f"Processed {total_count} schema files\n"
-            f"• New schemas: {uploaded_count}\n"
-            f"• Updated schemas: {updated_count}\n"
-            f"• Workspace: {workspace['name']}",
-            title="Upload Complete",
-            title_align="left",
-        )
-        Console().print(panel)
-        
-    except Exception as e:
-        panel = get_argilla_themed_panel(
-            f"An unexpected error occurred when uploading schemas: {str(e)}",
-            title="Upload Failed",
-            title_align="left",
-            success=False,
-        )
-        Console().print(panel)
-        raise typer.Exit(code=1)
+    # Import the actual implementation from the upload module
+    from argilla.cli.schemas.upload import upload_schemas
+
+    # Call the actual implementation
+    upload_schemas(ctx, directory, overwrite, exclude)
 
 
 @app.command(name="list", help="List schemas")
@@ -211,20 +156,20 @@ def list_schemas(
     """List available schemas with optional filtering."""
     try:
         workspace = ctx.obj["workspace"]
-        
+
         # In a real implementation, we would fetch schemas from the server
         # For now, we'll use mock data
         schemas = get_mock_schemas()
-        
+
         # Apply filter if specified
         if name:
             schemas = [s for s in schemas if name.lower() in s["name"].lower()]
-        
+
         if not schemas:
             message = f"No schemas found in workspace '{workspace['name']}'"
             if name:
                 message += f" matching name '{name}'"
-                
+
             panel = get_argilla_themed_panel(
                 message,
                 title="No schemas found",
@@ -232,7 +177,7 @@ def list_schemas(
             )
             Console().print(panel)
             return
-        
+
         # Create and display the table
         table = Table(title=f"Schemas in workspace '{workspace['name']}'")
         table.add_column("ID", justify="left")
@@ -241,7 +186,7 @@ def list_schemas(
         table.add_column("Version", justify="center")
         table.add_column("Created", justify="center")
         table.add_column("Updated", justify="center")
-        
+
         for schema in schemas:
             table.add_row(
                 schema["id"],
@@ -251,9 +196,9 @@ def list_schemas(
                 schema["created_at"],
                 schema["updated_at"],
             )
-        
+
         Console().print(table)
-        
+
     except Exception as e:
         panel = get_argilla_themed_panel(
             "An unexpected error occurred when listing schemas.",
@@ -273,14 +218,14 @@ def delete_schema(
     """Delete a specific schema by ID."""
     try:
         workspace = ctx.obj["workspace"]
-        
+
         # In a real implementation, we would delete the schema via the API
         # For now, we'll simulate this process
-        
+
         # Check if the schema exists
         schemas = get_mock_schemas()
         schema = next((s for s in schemas if s["id"] == schema_id), None)
-        
+
         if not schema:
             panel = get_argilla_themed_panel(
                 f"Schema with ID '{schema_id}' not found in workspace '{workspace['name']}'",
@@ -290,7 +235,7 @@ def delete_schema(
             )
             Console().print(panel)
             raise typer.Exit(code=1)
-        
+
         # Confirmation prompt
         if not typer.confirm(f"Are you sure you want to delete schema '{schema['name']}' ({schema_id})?"):
             panel = get_argilla_themed_panel(
@@ -300,7 +245,7 @@ def delete_schema(
             )
             Console().print(panel)
             return
-        
+
         # Simulate deletion
         panel = get_argilla_themed_panel(
             f"Schema '{schema['name']}' (ID: {schema_id}) successfully deleted from workspace '{workspace['name']}'",
@@ -308,7 +253,7 @@ def delete_schema(
             title_align="left",
         )
         Console().print(panel)
-        
+
     except Exception as e:
         panel = get_argilla_themed_panel(
             "An unexpected error occurred when deleting the schema.",

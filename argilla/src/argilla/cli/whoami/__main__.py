@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
-from pathlib import Path
-
 import typer
 from rich.markdown import Markdown
 
@@ -22,43 +19,33 @@ app = typer.Typer(invoke_without_command=True)
 
 
 def get_current_user():
-    """Get information about the current user."""
-    # In a full implementation, this would use the v2 API client
-    # For now, we'll read from the credentials file
-    cred_file = Path.home() / ".argilla" / "credentials.json"
-    
-    if not cred_file.exists():
-        raise ValueError("Not logged in. Please run 'extralit login' first.")
-    
-    with open(cred_file, "r") as f:
-        credentials = json.load(f)
-    
-    # In a real implementation, we would fetch user details from the server
-    # For now, we'll simulate a user based on the API key and URL
-    class User:
-        def __init__(self, api_url, api_key):
-            self.username = "current-user"  # Placeholder
-            self.role = "owner"  # Placeholder
-            self.first_name = "Current"  # Placeholder
-            self.last_name = "User"  # Placeholder
-            self.api_key = api_key[:5] + "..." if api_key else None
-            self.workspaces = ["default"]  # Placeholder
-            self.api_url = api_url
-            
-    return User(credentials.get("api_url"), credentials.get("api_key"))
+    """Get information about the current user.
+
+    Returns:
+        User: The current user.
+
+    Raises:
+        ValueError: If not logged in.
+    """
+    from argilla.cli.callback import init_callback
+
+    # Initialize client and get current user
+    client = init_callback()
+
+    # Return the current user
+    return client.me
 
 
 @app.callback(help="Show information about the current user")
 def whoami() -> None:
     """Display information about the current user."""
-    from argilla.cli.callback import init_callback
     from argilla.cli.rich import get_argilla_themed_panel
     from rich.console import Console
 
     try:
-        init_callback()
+        # Get current user (this will initialize the client)
         user = get_current_user()
-        
+
         panel = get_argilla_themed_panel(
             Markdown(
                 f"- **Username**: {user.username}\n"
@@ -74,7 +61,6 @@ def whoami() -> None:
         )
         Console().print(panel)
     except ValueError as e:
-        from argilla.cli.rich import get_argilla_themed_panel
         panel = get_argilla_themed_panel(
             str(e),
             title="Not logged in",

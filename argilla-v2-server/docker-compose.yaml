@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  argilla:
+    image: argilla/argilla-server:latest
+    ports:
+      - "6900:6900"
+    environment:
+      - ARGILLA_DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/argilla
+      - ARGILLA_ELASTICSEARCH=http://elasticsearch:9200
+      - ARGILLA_SEARCH_ENGINE=elasticsearch
+      - ARGILLA_REDIS_URL=redis://redis:6379/0
+      - ARGILLA_AUTH_SECRET_KEY=12345678901234567890123456789012
+      - USERNAME=argilla
+      - PASSWORD=argilla12345678
+      - WORKSPACE=default
+      - API_KEY=argilla.apikey
+    depends_on:
+      - postgres
+      - elasticsearch
+      - redis
+
+  worker:
+    image: argilla/argilla-server:latest
+    environment:
+      - ARGILLA_DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/argilla
+      - ARGILLA_ELASTICSEARCH=http://elasticsearch:9200
+      - ARGILLA_SEARCH_ENGINE=elasticsearch
+      - ARGILLA_REDIS_URL=redis://redis:6379/0
+      - ARGILLA_AUTH_SECRET_KEY=12345678901234567890123456789012
+      - BACKGROUND_NUM_WORKERS=2
+    depends_on:
+      - postgres
+      - elasticsearch
+      - redis
+    command: sh -c 'python -m argilla_server worker --num-workers $${BACKGROUND_NUM_WORKERS}'
+
+  postgres:
+    image: postgres:14
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=argilla
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.5.3
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+
+  redis:
+    image: redis:6.2
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  elasticsearch_data:
+  redis_data:

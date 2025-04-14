@@ -23,28 +23,25 @@ app = typer.Typer(invoke_without_command=True)
 
 
 def get_server_info():
-    """Get server information."""
-    try:
-        # In a full implementation, this would use the v2 API client
-        # For now, we'll use placeholder values for testing
-        from argilla import __version__ as client_version
-        
-        class ServerInfo:
-            def __init__(self):
-                self.url = "http://localhost:6900"  # Default v2 server URL
-                self.version = client_version  # Assume same version for demo
-                self.database_version = "Unknown"  # v2 doesn't use ElasticSearch
-        
-        return ServerInfo()
-    except ImportError:
-        # Fallback for development
-        class ServerInfo:
-            def __init__(self):
-                self.url = "http://localhost:6900"
-                self.version = "2.0.0"
-                self.database_version = "N/A"
-        
-        return ServerInfo()
+    """Get server information.
+
+    Returns:
+        ServerInfo: Object containing server information.
+    """
+    # Initialize client and get server info
+    client = init_callback()
+
+    # Get server info from client
+    server_info = client.get_server_info()
+
+    # Create ServerInfo object for backward compatibility
+    class ServerInfo:
+        def __init__(self):
+            self.url = server_info["url"]
+            self.version = server_info["version"]
+            self.database_version = server_info["database_version"]
+
+    return ServerInfo()
 
 
 @app.callback(help="Displays information about the Extralit client and server")
@@ -54,10 +51,10 @@ def info() -> None:
         from argilla import __version__ as version
     except ImportError:
         version = "2.0.0"  # Fallback version for development
-    
-    init_callback()
 
+    # Get server info (this will initialize the client)
     info = get_server_info()
+
     panel = get_argilla_themed_panel(
         Markdown(
             f"Connected to {info.url}\n"

@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-from pathlib import Path
-
 import typer
 
 app = typer.Typer(invoke_without_command=True)
@@ -22,9 +19,14 @@ app = typer.Typer(invoke_without_command=True)
 
 def remove_credentials():
     """Remove stored credentials."""
-    cred_file = Path.home() / ".argilla" / "credentials.json"
-    if cred_file.exists():
-        os.remove(cred_file)
+    from argilla.client.login import ArgillaCredentials
+
+    try:
+        ArgillaCredentials.remove()
+    except FileNotFoundError:
+        # If credentials don't exist, that's fine
+        pass
+
     return True
 
 
@@ -34,6 +36,7 @@ def logout(force: bool = typer.Option(False, help="Force the logout even if the 
     from argilla.cli.callback import init_callback
     from argilla.cli.rich import get_argilla_themed_panel
     from rich.console import Console
+    from argilla.client.login import ArgillaCredentials
 
     if not force:
         try:
@@ -51,10 +54,11 @@ def logout(force: bool = typer.Option(False, help="Force the logout even if the 
     # Remove the credentials
     remove_credentials()
 
+    # Show success message
     panel = get_argilla_themed_panel(
         "Logged out successfully from Extralit server!",
         title="Logout",
-        title_align="left"
+        title_align="left",
     )
     Console().print(panel)
 

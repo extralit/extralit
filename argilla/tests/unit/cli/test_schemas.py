@@ -86,11 +86,11 @@ def test_schemas_list_with_csv_export(mock_print, runner):
         mock_print.assert_called_once()
 
 
-@patch("pathlib.Path.glob")
-def test_schemas_upload(mock_glob, runner):
+@patch("argilla.cli.schemas.upload.upload_schemas")
+def test_schemas_upload(mock_upload_schemas, runner):
     """Test the 'upload schemas' command functionality."""
-    # Mock the glob function to return a list of schema files
-    mock_glob.return_value = [Path("schemas/schema1.json"), Path("schemas/schema2.json")]
+    # Set up the mock to return a successful result
+    mock_upload_schemas.return_value = None  # The function doesn't return anything
 
     with runner.isolated_filesystem():
         # Create a test directory with schema files
@@ -99,10 +99,32 @@ def test_schemas_upload(mock_glob, runner):
         with open("schemas/schema1.json", "w") as f:
             f.write('{"name": "test_schema"}')
 
-        result = runner.invoke(app, ["schemas", "--workspace", "research", "upload", "schemas"])
+        # Call the command with the appropriate parameters
+        result = runner.invoke(app, [
+            "schemas",
+            "--workspace", "research",
+            "upload",
+            "schemas",
+            "--overwrite",
+            "--exclude", "excluded_schema"
+        ])
 
+        # Verify the command executed successfully
         assert result.exit_code == 0
-        mock_glob.assert_called_once()
+
+        # Verify the upload_schemas function was called with the correct parameters
+        mock_upload_schemas.assert_called_once()
+        args, kwargs = mock_upload_schemas.call_args
+
+        # Check that the context was passed
+        assert args[0] is not None
+        # Check that the directory path was passed
+        assert isinstance(args[1], Path)
+        assert str(args[1]).endswith("schemas")
+        # Check that overwrite was set to True
+        assert args[2] is True
+        # Check that exclude was set correctly
+        assert args[3] == ["excluded_schema"]
 
 
 @patch("rich.console.Console.print")

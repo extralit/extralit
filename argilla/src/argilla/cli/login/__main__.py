@@ -22,35 +22,14 @@ app = typer.Typer(invoke_without_command=True)
 def login_impl(api_url: str, api_key: str, workspace: Optional[str] = None, extra_headers: Optional[dict] = None):
     """
     Implementation of the login functionality.
-    
-    In a full implementation, this would use the v2 API client.
-    For now we'll implement a simple placeholder that just stores credentials.
+
+    Uses the client login function to validate and store credentials.
     """
-    import os
-    import json
-    from pathlib import Path
-    
-    # Create argilla directory if it doesn't exist
-    argilla_dir = Path.home() / ".argilla"
-    argilla_dir.mkdir(exist_ok=True)
-    
-    # Create credentials file
-    credentials = {
-        "api_url": api_url,
-        "api_key": api_key,
-    }
-    
-    if workspace:
-        credentials["workspace"] = workspace
-        
-    if extra_headers:
-        credentials["extra_headers"] = extra_headers
-    
-    # Write credentials to file
-    with open(argilla_dir / "credentials.json", "w") as f:
-        json.dump(credentials, f)
-    
-    # For debug/development only - will be removed in full implementation
+    from argilla.client.login import login
+
+    # Call the login function to validate and store credentials
+    login(api_url=api_url, api_key=api_key, workspace=workspace, extra_headers=extra_headers)
+
     return True
 
 
@@ -77,10 +56,10 @@ def login(
         headers = {}
         if extra_headers:
             headers = json.loads(extra_headers)
-            
+
         # Call the implementation function
         login_impl(api_url=api_url, api_key=api_key, workspace=workspace, extra_headers=headers)
-        
+
     except json.JSONDecodeError:
         panel = get_argilla_themed_panel(
             "The provided extra headers are not a valid JSON string.",
@@ -101,8 +80,8 @@ def login(
         raise typer.Exit(code=1) from e
 
     panel = get_argilla_themed_panel(
-        f"Logged in successfully to '{api_url}' Extralit server!", 
-        title="Logged in", 
+        f"Logged in successfully to '{api_url}' Extralit server!",
+        title="Logged in",
         title_align="left"
     )
     Console().print(panel)

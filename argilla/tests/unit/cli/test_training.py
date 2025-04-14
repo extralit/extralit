@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pytest
+import json
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock
 from datetime import datetime
@@ -34,22 +35,27 @@ def test_training_help(runner):
     assert "trainer" in result.stdout.lower()
 
 
-def test_training_framework_validation(runner):
+@patch("argilla.cli.training.__main__.framework_callback")
+def test_training_framework_validation(mock_framework_callback, runner):
     """Test that the framework parameter is validated correctly."""
+    # Set up the mock to return a valid framework
+    mock_framework_callback.return_value = Framework.SPACY
+
     # Valid framework
     result = runner.invoke(app, ["training", "--framework", "spacy", "--help"])
     assert result.exit_code == 0
 
-    # We can't test invalid framework validation because the validation is done at runtime
-    # and the CLI runner doesn't capture that validation
-    # For now, we'll just verify that the help command works with any framework value
-    result = runner.invoke(app, ["training", "--framework", "invalid_framework", "--help"])
-    assert result.exit_code == 0
+    # Verify that the framework_callback was called with the correct value
+    mock_framework_callback.assert_called_with("spacy")
 
 
 @patch("rich.console.Console.print")
-def test_training_basic(mock_print, runner):
+@patch("argilla.cli.training.__main__.framework_callback")
+def test_training_basic(mock_framework_callback, mock_print, runner):
     """Test basic training command functionality."""
+    # Set up the mock to return a valid framework
+    mock_framework_callback.return_value = Framework.SPACY
+
     result = runner.invoke(app, [
         "training",
         "--name", "test_dataset",
@@ -58,18 +64,21 @@ def test_training_basic(mock_print, runner):
     ])
 
     assert result.exit_code == 0
-    mock_print.assert_called()
 
-    # Verify that Console.print was called
+    # Verify that the framework_callback was called with the correct value
+    mock_framework_callback.assert_called_with("spacy")
+
+    # Verify that Console.print was called to display the training information
     assert mock_print.called
-
-    # For now, we'll just verify that the command completed successfully
-    # In a real test, we would need to mock the API call and verify the response
 
 
 @patch("rich.console.Console.print")
-def test_training_with_options(mock_print, runner):
+@patch("argilla.cli.training.__main__.framework_callback")
+def test_training_with_options(mock_framework_callback, mock_print, runner):
     """Test training command with additional options."""
+    # Set up the mock to return a valid framework
+    mock_framework_callback.return_value = Framework.TRANSFORMERS
+
     result = runner.invoke(app, [
         "training",
         "--name", "test_dataset",
@@ -83,18 +92,21 @@ def test_training_with_options(mock_print, runner):
     ])
 
     assert result.exit_code == 0
-    mock_print.assert_called()
 
-    # Verify that Console.print was called
+    # Verify that the framework_callback was called with the correct value
+    mock_framework_callback.assert_called_with("transformers")
+
+    # Verify that Console.print was called to display the training information
     assert mock_print.called
-
-    # For now, we'll just verify that the command completed successfully
-    # In a real test, we would need to mock the API call and verify the response
 
 
 @patch("rich.console.Console.print")
-def test_training_with_query(mock_print, runner):
+@patch("argilla.cli.training.__main__.framework_callback")
+def test_training_with_query(mock_framework_callback, mock_print, runner):
     """Test training command with query parameter."""
+    # Set up the mock to return a valid framework
+    mock_framework_callback.return_value = Framework.SPACY
+
     result = runner.invoke(app, [
         "training",
         "--name", "test_dataset",
@@ -104,18 +116,23 @@ def test_training_with_query(mock_print, runner):
     ])
 
     assert result.exit_code == 0
-    mock_print.assert_called()
 
-    # Verify that Console.print was called
+    # Verify that the framework_callback was called with the correct value
+    mock_framework_callback.assert_called_with("spacy")
+
+    # Verify that Console.print was called to display the training information
     assert mock_print.called
-
-    # For now, we'll just verify that the command completed successfully
-    # In a real test, we would need to mock the API call and verify the response
 
 
 @patch("rich.console.Console.print")
-def test_training_with_config_update(mock_print, runner):
+@patch("argilla.cli.training.__main__.framework_callback")
+@patch("json.loads")
+def test_training_with_config_update(mock_json_loads, mock_framework_callback, mock_print, runner):
     """Test training command with config update."""
+    # Set up the mocks
+    mock_framework_callback.return_value = Framework.SPACY
+    mock_json_loads.return_value = {"max_steps": 1000, "learning_rate": 0.0001}
+
     result = runner.invoke(app, [
         "training",
         "--name", "test_dataset",
@@ -125,10 +142,12 @@ def test_training_with_config_update(mock_print, runner):
     ])
 
     assert result.exit_code == 0
-    mock_print.assert_called()
 
-    # Verify that Console.print was called
+    # Verify that the framework_callback was called with the correct value
+    mock_framework_callback.assert_called_with("spacy")
+
+    # Verify that json.loads was called to parse the config update
+    mock_json_loads.assert_called_once_with('{"max_steps": 1000, "learning_rate": 0.0001}')
+
+    # Verify that Console.print was called to display the training information
     assert mock_print.called
-
-    # For now, we'll just verify that the command completed successfully
-    # In a real test, we would need to mock the API call and verify the response
