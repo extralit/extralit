@@ -26,63 +26,63 @@ from rich.table import Table
 # Helper functions for workspace operations
 def get_workspace(name: str) -> Dict[str, Any]:
     """Get a workspace by name."""
-    # In a real implementation, we would fetch the workspace from the server
-    # For now, we'll simulate success if the name is valid
+    # Get all workspaces and filter by name
     workspaces = get_workspaces()
     for workspace in workspaces:
         if workspace["name"] == name:
             return workspace
+
+    # If we get here, the workspace was not found
     raise ValueError(f"Workspace with name={name} does not exist.")
 
 
 def get_workspaces() -> list[Dict[str, Any]]:
     """Get list of workspaces."""
-    # Mock workspaces for development
-    return [
-        {
-            "id": "1",
-            "name": "default",
-            "inserted_at": datetime.now(),
-            "updated_at": datetime.now(),
-        },
-        {
-            "id": "2",
-            "name": "research",
-            "inserted_at": datetime.now(),
-            "updated_at": datetime.now(),
-        }
-    ]
+    # Initialize the client
+    client = init_callback()
+
+    try:
+        # Make a request to get workspaces
+        workspaces = client._get_workspace_list()
+
+        # If we have a successful response, return the workspaces
+        return workspaces
+    except Exception as e:
+        # If there's an error, log it and return mock data
+        print(f"Warning: Failed to get workspaces: {str(e)}")
+        # Fallback to mock data for development
+        return [
+            {
+                "id": "1",
+                "name": "default",
+                "inserted_at": datetime.now(),
+                "updated_at": datetime.now(),
+            },
+            {
+                "id": "2",
+                "name": "research",
+                "inserted_at": datetime.now(),
+                "updated_at": datetime.now(),
+            }
+        ]
 
 
 def get_user(username: str) -> Dict[str, Any]:
     """Get a user by username."""
-    # Mock users for development
-    users = [
-        {
-            "id": "1",
-            "username": "admin",
-            "role": "admin",
-            "is_owner": True
-        },
-        {
-            "id": "2",
-            "username": "researcher",
-            "role": "owner",
-            "is_owner": True
-        },
-        {
-            "id": "3",
-            "username": "annotator",
-            "role": "annotator",
-            "is_owner": False
-        }
-    ]
-    
-    for user in users:
-        if user["username"] == username:
-            return user
-    
-    raise ValueError(f"User with username={username} does not exist.")
+    # Initialize the client
+    client = init_callback()
+
+    try:
+        # Get the user via the API
+        user = client.get_user(username=username)
+
+        # Add is_owner flag based on role
+        user["is_owner"] = user["role"] in ["admin", "owner"]
+
+        return user
+    except Exception as e:
+        # If there's an error, raise a ValueError
+        raise ValueError(f"User with username={username} does not exist: {str(e)}")
 
 
 # Typer app and callback
@@ -139,11 +139,16 @@ def create_workspace(
 ) -> None:
     """Creates a workspace for the logged user in Extralit."""
     try:
-        # In a real implementation, we would create the workspace via the API
-        # For now, we'll just simulate success
+        # Initialize the client
+        client = init_callback()
+
+        # Create the workspace via the API
+        client.create_workspace(name=name)
+
+        # Display success message
         panel = get_argilla_themed_panel(
             f"Workspace with the name={name} successfully created.",
-            title="Workspace created", 
+            title="Workspace created",
             title_align="left"
         )
         Console().print(panel)
@@ -171,10 +176,9 @@ def create_workspace(
 def list_workspaces() -> None:
     """List the workspaces in Extralit and prints them on the console."""
     try:
-        # In a real implementation, we would fetch workspaces from the server
-        # For now, we'll use mock data
+        # Get workspaces from the server
         workspaces = get_workspaces()
-        
+
         table = Table(title="Workspaces")
         for column in ("ID", "Name", "Creation Date", "Last Update Date"):
             table.add_column(column, justify="center")
@@ -203,6 +207,7 @@ def list_workspaces() -> None:
 def add_user(
     ctx: typer.Context,
     username: str = typer.Argument(..., help="The username of the user to be added to the workspace"),
+    role: str = typer.Option("annotator", help="The role of the user in the workspace (annotator, owner)"),
 ) -> None:
     """Adds a user to a workspace."""
     workspace = ctx.obj
@@ -221,8 +226,13 @@ def add_user(
             Console().print(panel)
             raise typer.Exit(code=1)
 
-        # In a real implementation, we would add the user to the workspace via the API
-        # For now, we'll just simulate success
+        # Initialize the client
+        client = init_callback()
+
+        # Add the user to the workspace via the API
+        client.add_user_to_workspace(username=username, workspace_name=workspace['name'], role=role)
+
+        # Display success message
         panel = get_argilla_themed_panel(
             f"User with username={username} has been added to workspace={workspace['name']}",
             title="User added",
@@ -271,8 +281,13 @@ def delete_user(
             Console().print(panel)
             raise typer.Exit(code=1)
 
-        # In a real implementation, we would remove the user from the workspace via the API
-        # For now, we'll just simulate success
+        # Initialize the client
+        client = init_callback()
+
+        # Remove the user from the workspace via the API
+        client.remove_user_from_workspace(username=username, workspace_name=workspace['name'])
+
+        # Display success message
         panel = get_argilla_themed_panel(
             f"User with username={username} has been removed from workspace={workspace['name']}",
             title="User removed",

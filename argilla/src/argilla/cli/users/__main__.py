@@ -27,9 +27,7 @@ class UserRole(str, Enum):
     ANNOTATOR = "annotator"
 
 
-def callback(
-    ctx: typer.Context,
-) -> None:
+def callback() -> None:
     """Callback for users commands."""
     init_callback()
 
@@ -58,17 +56,18 @@ def create_user(
     from rich.console import Console
 
     try:
-        # In a real implementation, we would create the user via the API
-        # For now, we'll simulate success with the provided parameters
-        user = {
-            "username": username,
-            "password": password,  # In real impl, this would be hashed and not displayed
-            "first_name": first_name or "",
-            "last_name": last_name or "",
-            "role": role,
-            "api_key": "api_" + username,  # Mock API key
-            "workspaces": workspaces or ["default"]
-        }
+        # Initialize the client
+        client = init_callback()
+
+        # Create the user via the API
+        user = client.create_user(
+            username=username,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            role=role,
+            workspaces=workspaces
+        )
 
         panel = get_argilla_themed_panel(
             Markdown(
@@ -95,8 +94,8 @@ def create_user(
     except ValueError as e:
         panel = get_argilla_themed_panel(
             f"Provided parameters are not valid:\n\n{e}",
-            title="Invalid parameters", 
-            title_align="left", 
+            title="Invalid parameters",
+            title_align="left",
             success=False
         )
         Console().print(panel)
@@ -120,53 +119,16 @@ def list_users(
     """List all users in the system with optional filtering."""
     from rich.console import Console
     from rich.table import Table
-    from datetime import datetime
 
     from argilla.cli.rich import get_argilla_themed_panel
 
     try:
-        # In a real implementation, we would fetch users from the server
-        # For now, we'll create mock users for display
-        mock_users = [
-            {
-                "id": "1",
-                "username": "admin",
-                "role": "admin",
-                "first_name": "Admin",
-                "last_name": "User",
-                "workspaces": ["default", "research"],
-                "inserted_at": datetime.now(),
-                "updated_at": datetime.now(),
-            },
-            {
-                "id": "2",
-                "username": "researcher",
-                "role": "owner",
-                "first_name": "Research",
-                "last_name": "User",
-                "workspaces": ["research"],
-                "inserted_at": datetime.now(),
-                "updated_at": datetime.now(),
-            },
-            {
-                "id": "3",
-                "username": "annotator",
-                "role": "annotator",
-                "first_name": "Annotation",
-                "last_name": "User",
-                "workspaces": ["default"],
-                "inserted_at": datetime.now(),
-                "updated_at": datetime.now(),
-            }
-        ]
-        
-        # Apply filters if provided
-        filtered_users = mock_users
-        if workspace:
-            filtered_users = [user for user in filtered_users if workspace in user["workspaces"]]
-        if role:
-            filtered_users = [user for user in filtered_users if user["role"] == role]
-        
+        # Initialize the client
+        client = init_callback()
+
+        # Fetch users from the server with optional filtering
+        filtered_users = client.list_users(workspace=workspace, role=role)
+
         # Create a table to display users
         table = Table(show_header=True, header_style="bold blue")
         table.add_column("ID")
@@ -174,7 +136,7 @@ def list_users(
         table.add_column("Role")
         table.add_column("Full Name")
         table.add_column("Workspaces")
-        
+
         for user in filtered_users:
             full_name = f"{user['first_name']} {user['last_name']}".strip()
             workspaces = ", ".join(user["workspaces"])
@@ -185,16 +147,16 @@ def list_users(
                 full_name,
                 workspaces
             )
-        
+
         console = Console()
-        
+
         if not filtered_users:
             message = "No users found"
             if workspace:
                 message += f" in workspace '{workspace}'"
             if role:
                 message += f" with role '{role}'"
-            
+
             panel = get_argilla_themed_panel(
                 message,
                 title="Users",
@@ -203,7 +165,7 @@ def list_users(
             console.print(panel)
         else:
             console.print(table)
-            
+
     except RuntimeError:
         panel = get_argilla_themed_panel(
             "An unexpected error occurred when trying to list users.",
@@ -224,8 +186,11 @@ def delete_user(
     from rich.console import Console
 
     try:
-        # In a real implementation, we would fetch the user and delete via the API
-        # For now, we'll just simulate success
+        # Initialize the client
+        client = init_callback()
+
+        # Delete the user via the API
+        client.delete_user(username=username)
         panel = get_argilla_themed_panel(
             f"User with username={username} has been removed.",
             title="User removed",

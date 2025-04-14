@@ -58,32 +58,55 @@ def callback(
         raise typer.BadParameter("The command requires a .env file path provided using '--env-file' option")
 
     try:
-        # In a real implementation, we would validate the workspace and load env file
-        # For now, we'll simulate success
-        
-        # Mock workspace and MinIO client for demonstration
-        mock_workspace = {
-            "id": "1" if workspace == "default" else "2",
-            "name": workspace or "default",
-        }
-        
-        # Simulate loading environment variables from .env file
+        # Initialize the client
+        client = init_callback()
+
+        # Validate the workspace if provided
+        workspace_data = None
+        if workspace:
+            try:
+                # Get the workspace from the client
+                from argilla.cli.workspaces.__main__ import get_workspace
+                workspace_data = get_workspace(workspace)
+            except ValueError as e:
+                panel = get_argilla_themed_panel(
+                    f"Workspace with name={workspace} does not exist.",
+                    title="Workspace not found",
+                    title_align="left",
+                    success=False,
+                )
+                Console().print(panel)
+                raise typer.Exit(code=1)
+
+        # Load environment variables from .env file if provided
         if env_file:
-            panel = get_argilla_themed_panel(
-                f"Loaded environment variables from {env_file}",
-                title="Environment Loaded",
-                title_align="left",
-            )
-            Console().print(panel)
-        
-        # Mock MinIO client
-        mock_minio_client = {"connected": True, "endpoint": "mock-s3-endpoint"}
-        
+            try:
+                # Load environment variables from .env file
+                from dotenv import load_dotenv
+                load_dotenv(env_file)
+                
+                panel = get_argilla_themed_panel(
+                    f"Loaded environment variables from {env_file}",
+                    title="Environment Loaded",
+                    title_align="left",
+                )
+                Console().print(panel)
+            except Exception as e:
+                panel = get_argilla_themed_panel(
+                    f"Failed to load environment variables from {env_file}: {str(e)}",
+                    title="Environment Load Failed",
+                    title_align="left",
+                    success=False,
+                )
+                Console().print(panel)
+                raise typer.Exit(code=1)
+
+        # Store the client and workspace in the context
         ctx.obj = {
-            "workspace": mock_workspace,
-            "minio_client": mock_minio_client,
+            "client": client,
+            "workspace": workspace_data or {"name": workspace} if workspace else None,
         }
-        
+
     except ValueError as e:
         panel = get_argilla_themed_panel(
             f"Workspace with name={workspace} does not exist.",
@@ -105,16 +128,21 @@ def callback(
         raise typer.Exit(code=1)
 
 
-app = typer.Typer(help="Commands for extraction data management", no_args_is_help=True, callback=callback)
+# Typer app and callback
+app = typer.Typer(
+    name="extraction",
+    help="Commands for data extraction operations.",
+    callback=callback,
+)
 
 
 @app.command(name="export", help="Export extraction data to S3 storage")
-def export_data(
+def export(
     ctx: typer.Context,
     type_: Optional[DatasetType] = typer.Option(
         None,
         "--type",
-        help="The type of datasets to export.",
+        help="The type of dataset to export (text_classification, token_classification, text_generation, feedback).",
     ),
     output_path: str = typer.Option(
         "exported-data",
@@ -124,10 +152,9 @@ def export_data(
 ) -> None:
     """Export extraction data to S3 storage."""
     try:
-        # In a real implementation, we would fetch and export data
-        # For now, we'll simulate the export process
+        # Get client and workspace from context
+        client = ctx.obj["client"]
         workspace = ctx.obj["workspace"]
-        minio_client = ctx.obj["minio_client"]
         
         # Display export information
         dataset_type = f"({type_.value})" if type_ else "(all types)"
@@ -138,24 +165,25 @@ def export_data(
         )
         Console().print(panel)
         
-        # Simulate export process
+        # Start the export process
         spinner = Spinner(
             name="dots",
             text="Exporting data...",
         )
         
-        import time
         with Live(spinner, refresh_per_second=20):
-            # In a real implementation, we would perform the actual export
-            # For now, we'll just simulate a delay
-            time.sleep(2)  # Simulate export time
+            # Perform the actual export
+            client.export_extraction_data(
+                workspace=workspace['name'],
+                dataset_type=type_.value if type_ else None,
+                output_path=output_path
+            )
         
         # Show completion message
         panel = get_argilla_themed_panel(
             f"Extraction data successfully exported to {output_path}\n"
             f"• Workspace: {workspace['name']}\n"
-            f"• Dataset type: {type_.value if type_ else 'All'}\n"
-            f"• Storage connection: {minio_client['endpoint']}",
+            f"• Dataset type: {type_.value if type_ else 'All'}",
             title="Export Complete",
             title_align="left",
         )
@@ -163,7 +191,7 @@ def export_data(
         
     except Exception as e:
         panel = get_argilla_themed_panel(
-            "An unexpected error occurred during data export.",
+            f"An unexpected error occurred during data export: {str(e)}",
             title="Export Failed",
             title_align="left",
             success=False,
@@ -179,10 +207,14 @@ def check_status(
 ) -> None:
     """Check status of the extraction process."""
     try:
-        # In a real implementation, we would check actual extraction status
-        # For now, we'll just simulate status information
+        # Get client from context
+        client = ctx.obj["client"]
+        workspace = ctx.obj["workspace"]["name"] if ctx.obj.get("workspace") else None
         
-        # Create a mock status table
+        # Get extraction status from the API
+        status_records = client.get_extraction_status(dataset_name=dataset, workspace=workspace)
+        
+        # Create a status table
         from rich.table import Table
         
         table = Table(title="Extraction Status")
@@ -192,45 +224,48 @@ def check_status(
         table.add_column("Records", justify="right")
         table.add_column("Last Updated", justify="center")
         
-        # Add mock data rows
-        if dataset:
-            # Show status for a specific dataset
-            table.add_row(
-                dataset,
-                "text_classification",
-                "✅ Complete",
-                "1,250",
-                "2025-04-14 12:30:45"
-            )
+        # Add data rows from the API response
+        if status_records:
+            for record in status_records:
+                # Format the status with an emoji
+                status_text = record["status"]
+                if status_text.lower() == "complete":
+                    status_display = "✅ Complete"
+                elif "progress" in status_text.lower():
+                    status_display = "🔄 " + status_text
+                elif "fail" in status_text.lower():
+                    status_display = "❌ " + status_text
+                else:
+                    status_display = status_text
+                
+                # Format the record count with commas
+                record_count = f"{record['records']:,}" if record["records"] else "0"
+                
+                # Format the last updated date
+                last_updated = record["last_updated"].strftime("%Y-%m-%d %H:%M:%S") if record["last_updated"] else ""
+                
+                table.add_row(
+                    record["dataset"],
+                    record["type"],
+                    status_display,
+                    record_count,
+                    last_updated
+                )
         else:
-            # Show status for multiple datasets
+            # No records found
             table.add_row(
-                "sentiment-analysis",
-                "text_classification",
-                "✅ Complete",
-                "1,250",
-                "2025-04-14 12:30:45"
-            )
-            table.add_row(
-                "named-entity-recognition",
-                "token_classification",
-                "🔄 In Progress (85%)",
-                "2,430",
-                "2025-04-14 12:35:10"
-            )
-            table.add_row(
-                "text-summarization",
-                "text_generation",
-                "❌ Failed",
-                "0",
-                "2025-04-14 11:15:22"
+                "No extraction data found",
+                "",
+                "",
+                "",
+                ""
             )
         
         Console().print(table)
         
     except Exception as e:
         panel = get_argilla_themed_panel(
-            "An unexpected error occurred when checking extraction status.",
+            f"An unexpected error occurred when checking extraction status: {str(e)}",
             title="Status Check Failed",
             title_align="left",
             success=False,

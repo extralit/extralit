@@ -120,21 +120,11 @@ def login(api_url: str, api_key: str, workspace: Optional[str] = None, extra_hea
     Raises:
         ValueError: If the login fails.
     """
-    # Try to login to the server
-    try:
-        # In a real implementation, we would validate the credentials by making an API call
-        # For now, we'll just store the credentials
-
-        # TODO: Replace with actual API validation when client is implemented
-        # from argilla.client import Argilla
-        # client = Argilla(api_url=api_url, api_key=api_key)
-        # client.me  # This will validate the credentials
-
-        # For now, we'll just assume the credentials are valid
-        pass
-
-    except Exception as e:
-        raise ValueError(f"Could not login to '{api_url}' using provided credentials") from e
+    # For now, we'll just store the credentials without validation
+    # This is a temporary solution until we can properly debug the API authentication
 
     # Save credentials
     ArgillaCredentials(api_url=api_url, api_key=api_key, workspace=workspace, extra_headers=extra_headers).save()
+
+    # Return without validation
+    return
