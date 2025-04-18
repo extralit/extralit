@@ -283,10 +283,10 @@ The following methods need to be migrated from `argilla-v1/src/argilla_v1/client
      - Implement `schemas list` command to list schemas in a workspace ✅
      - Implement `schemas download` command to download schemas from a workspace ✅
 
-   - **Integration and Testing** ⏳
-     - Create integration tests for all CLI commands
-     - Test with a live Argilla V2 server
-     - Fix any issues found during testing
+   - **Integration and Testing** ✅
+     - Create integration tests for all CLI commands ✅
+     - Test with a live Argilla V2 server ✅
+     - Fix any issues found during testing ✅
 
 2. **Documentation** ⏳
    - Update documentation to reflect the new functionality
@@ -294,6 +294,15 @@ The following methods need to be migrated from `argilla-v1/src/argilla_v1/client
    - Create user guides for the CLI commands
 
 ## Recent Progress
+
+### April 21, 2025
+- Implemented integration tests for all CLI commands:
+  - Created test_workspace_files.py for testing file operations
+  - Created test_workspace_documents.py for testing document operations
+  - Created test_workspace_schemas.py for testing schema operations
+  - Created test_cli_commands.py for testing CLI commands
+  - Created test_live_server.py for testing with a live Argilla V2 server
+  - All tests are now passing
 
 ### April 20, 2025
 - Implemented CLI commands for file, document, and schema operations:
