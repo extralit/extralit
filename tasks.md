@@ -82,23 +82,23 @@ Migrate each command module individually, in order of dependency:
   - [ ] Add deprecation warnings for commands that will change in future
 
 ### Phase 5: Documentation and Finalization (Days 16-18)
-- [ ] Update CLI documentation
-  - [ ] Update main README with CLI installation and usage
-  - [ ] Update command-specific documentation
-- [ ] Create migration guide for users coming from v1
-  - [ ] Document command mapping between v1 and v2
-  - [ ] Highlight breaking changes and new features
-- [ ] Add examples for common CLI usage patterns
-  - [ ] Create example scripts for common workflows
-  - [ ] Add examples to documentation
-- [ ] Final testing and bug fixes
-  - [ ] Perform end-to-end testing of all commands
-  - [ ] Fix any remaining issues
+- [x] Update CLI documentation
+  - [x] Create CLI_README.md with CLI installation and usage
+  - [x] Create command-specific documentation
+- [x] Create migration guide for users coming from v1
+  - [x] Document command mapping between v1 and v2 in API_DIFFERENCES.md
+  - [x] Highlight breaking changes and new features
+- [x] Add examples for common CLI usage patterns
+  - [x] Add examples to CLI_README.md
+  - [x] Add examples to command-specific documentation
+- [x] Final testing and bug fixes
+  - [x] Perform end-to-end testing of all commands with test_live_server.py
+  - [x] Fix authentication issues and other bugs
 - [ ] Prepare pull request
   - [ ] Create comprehensive PR description
   - [ ] Address reviewer feedback
-- [ ] Add detailed help text for all commands
-- [ ] Create command reference documentation
+- [x] Add detailed help text for all commands
+- [x] Create command reference documentation in CLI_README.md
 - [ ] Document error handling and logging
 - [ ] Document shell completion setup
 - [ ] Document command aliases and versioning
@@ -144,8 +144,8 @@ argilla = "argilla.cli.app:app"
 - [x] Phase 4: Integration and Testing - Initial command testing ✅
 - [x] Phase 4: Integration and Testing - Complete test coverage ✅
 - [x] Phase 4: Integration and Testing - Replace mock implementations with real API calls ✅
-- [ ] Phase 4: Integration and Testing - Live server testing 🔄
-- [ ] Phase 5: Documentation and Finalization
+- [x] Phase 4: Integration and Testing - Live server testing ✅
+- [ ] Phase 5: Documentation and Finalization 🔄
 
 ## Next Steps
 
@@ -154,16 +154,17 @@ argilla = "argilla.cli.app:app"
    - [x] Set up a local Argilla v2 server for testing
    - [x] Configure test data and users
    - [x] Create test datasets and workspaces
+   - [x] Create test script for automated testing
 
 2. Test all command modules against live server:
    - [x] Test login and authentication commands
    - [x] Test user management commands
    - [x] Test workspace management commands
    - [x] Test dataset management commands
-   - [ ] Test schema management commands
-   - [ ] Test training and extraction commands
+   - [x] Test schema management commands
+   - [x] Test training and extraction commands
    - [x] Document API compatibility issues
-   - [ ] Fix authentication issues with the server
+   - [x] Fix authentication issues with the server
 
 ### Error Handling and Logging (Priority 2)
 1. Implement consistent error handling:
@@ -189,27 +190,36 @@ argilla = "argilla.cli.app:app"
 
 ### Documentation (Priority 4)
 1. Update CLI documentation:
-   - [ ] Create comprehensive command reference
-   - [ ] Document new features and improvements
-   - [ ] Update installation instructions
-   - [ ] Add troubleshooting section
-   - [ ] Document environment variables and configuration options
-   - [ ] Add examples for each command
+   - [x] Create comprehensive command reference in CLI_README.md
+   - [x] Document new features and improvements
+   - [x] Update installation instructions
+   - [x] Add troubleshooting section
+   - [x] Document environment variables and configuration options
+   - [x] Add examples for each command
 
 2. Create migration guide:
-   - [ ] Document differences between v1 and v2 CLI
-   - [ ] Provide examples for common use cases
-   - [ ] Create upgrade path instructions
-   - [ ] Document command mapping between versions
-   - [ ] Highlight breaking changes
+   - [x] Document differences between v1 and v2 CLI in API_DIFFERENCES.md
+   - [x] Provide examples for common use cases in CLI_README.md
+   - [x] Create upgrade path instructions
+   - [x] Document command mapping between versions
+   - [x] Highlight breaking changes
 
 3. Add developer documentation:
-   - [ ] Document code structure and architecture
-   - [ ] Create contribution guidelines
-   - [ ] Document testing approach
+   - [x] Document code structure and architecture in CLI_CONTRIBUTING.md
+   - [x] Create contribution guidelines in CLI_CONTRIBUTING.md
+   - [x] Document testing approach in CLI_CONTRIBUTING.md
    - [ ] Add API documentation for client classes
 
 ## Recent Progress
+
+### April 18, 2025
+- Completed live server testing for all CLI commands:
+  - Created a comprehensive test script (`test_live_server.py`) to automate testing
+  - Successfully tested all command modules against the local Argilla v2 server
+  - Fixed authentication issues by implementing a flexible authentication system
+  - Documented API differences between v1 and v2 in `API_DIFFERENCES.md`
+- Updated tasks.md to reflect progress
+- Created test files for schema management and extraction commands
 
 ### April 17, 2025
 - Set up and tested a local Argilla v2 server for CLI testing:
