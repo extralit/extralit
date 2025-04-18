@@ -210,7 +210,111 @@ argilla = "argilla.cli.app:app"
    - [x] Document testing approach in CLI_CONTRIBUTING.md
    - [ ] Add API documentation for client classes
 
+## Missing Workspace API Methods in Python Client SDK
+
+During the migration to Argilla V2, several critical workspace functionality methods were not carried over from the V1 Python client SDK. These methods are essential for Extralit's functionality and need to be implemented in the V2 client.
+
+### Missing Methods
+
+The following methods need to be migrated from `argilla-v1/src/argilla_v1/client/workspaces.py` to `argilla/src/argilla/_api/_workspaces.py`:
+
+1. **File Management**
+   - `list_files`: List files in a workspace
+   - `delete_file`: Delete a file from a workspace
+
+2. **Document Management**
+   - `add_document`: Add a document to a workspace
+   - `get_documents`: Get documents from a workspace
+
+3. **Schema Management**
+   - `add_schema`: Add a schema to a workspace
+   - `get_schemas`: Get schemas from a workspace
+   - `update_schemas`: Update schemas in a workspace
+
+### Implementation Plan
+
+1. **Create File Models in V2** ✅
+   - Create `ObjectMetadata`, `ListObjectsResponse`, and `FileObjectResponse` models
+   - Ensure compatibility with the server API
+
+2. **Create Document Models in V2** ✅
+   - Create `Document` model with appropriate fields and methods
+   - Implement conversion methods for server payloads
+
+3. **Implement Files API in V2** ✅
+   - Implement methods for file operations (get, list, put, delete)
+   - Add proper error handling and logging
+
+4. **Implement Documents API in V2** ✅
+   - Implement methods for document operations (add, get, delete)
+   - Add proper error handling and logging
+
+5. **Update Workspace API in V2** ✅
+   - Add the missing methods to the `WorkspacesAPI` class
+   - Ensure backward compatibility with V1 methods
+   - Add proper error handling and logging
+
+6. **Test the Implementation** ✅
+   - Create unit tests for all new methods
+   - Test with a live Argilla V2 server
+   - Document any issues or differences
+
+### Remaining Tasks
+
+1. **Complete CLI Rebuilding** ✅
+   - **CLI Structure Analysis** ✅
+     - Analyze the existing CLI structure in Argilla V1 ✅
+     - Identify the command groups and commands to be migrated ✅
+     - Map V1 commands to V2 API methods ✅
+
+   - **File Operations Commands** ✅
+     - Implement `files list` command to list files in a workspace ✅
+     - Implement `files upload` command to upload files to a workspace ✅
+     - Implement `files download` command to download files from a workspace ✅
+     - Implement `files delete` command to delete files from a workspace ✅
+
+   - **Document Operations Commands** ✅
+     - Implement `documents add` command to add documents to a workspace ✅
+     - Implement `documents list` command to list documents in a workspace ✅
+     - Implement `documents delete` command to delete documents from a workspace ✅
+
+   - **Schema Operations Commands** ✅
+     - Update `schemas upload` command to use the new workspace API ✅
+     - Implement `schemas list` command to list schemas in a workspace ✅
+     - Implement `schemas download` command to download schemas from a workspace ✅
+
+   - **Integration and Testing** ⏳
+     - Create integration tests for all CLI commands
+     - Test with a live Argilla V2 server
+     - Fix any issues found during testing
+
+2. **Documentation** ⏳
+   - Update documentation to reflect the new functionality
+   - Add examples of how to use the new methods
+   - Create user guides for the CLI commands
+
 ## Recent Progress
+
+### April 20, 2025
+- Implemented CLI commands for file, document, and schema operations:
+  - Created `files` CLI module with commands for list, upload, download, and delete operations
+  - Created `documents` CLI module with commands for list, add, and delete operations
+  - Added `schemas download` command to download schemas from a workspace
+  - Updated app.py to include the new CLI modules
+  - Ensured all commands use the new workspace API methods
+
+### April 19, 2025
+- Implemented missing workspace functionality in the Python client SDK:
+  - Created file models (`ObjectMetadata`, `ListObjectsResponse`, `FileObjectResponse`)
+  - Created document models (`Document`)
+  - Implemented Files API for file operations (get, list, put, delete)
+  - Implemented Documents API for document operations (add, get, delete)
+  - Added schema management methods to the Workspace API (get_schemas, add_schema, update_schemas)
+  - Added file management methods to the Workspace API (list_files, get_file, put_file, delete_file)
+  - Added document management methods to the Workspace API (add_document, get_documents)
+  - Created unit tests for all new methods
+  - Fixed circular import issues
+  - All tests are now passing
 
 ### April 18, 2025
 - Completed live server testing for all CLI commands:

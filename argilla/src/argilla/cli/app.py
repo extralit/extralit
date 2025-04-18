@@ -20,7 +20,9 @@ from argilla.cli.rich import get_argilla_themed_panel
 # Import all CLI modules that will be registered with the app
 from argilla.cli import (
     datasets,
+    documents,
     extraction,
+    files,
     info,
     login,
     logout,
@@ -55,7 +57,9 @@ def handler_permission_error(e: PermissionError) -> None:
 
 # Register all command modules
 app.add_typer(datasets.app, name="datasets")
+app.add_typer(documents.app, name="documents")
 app.add_typer(extraction.app, name="extraction")
+app.add_typer(files.app, name="files")
 app.add_typer(info.app, name="info")
 app.add_typer(login.app, name="login")
 app.add_typer(logout.app, name="logout")

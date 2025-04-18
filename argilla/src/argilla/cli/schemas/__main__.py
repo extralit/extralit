@@ -26,7 +26,7 @@ from rich.table import Table
 
 
 # Commands that require specific parameters
-_COMMANDS_REQUIRING_WORKSPACE = ["upload", "list", "delete"]
+_COMMANDS_REQUIRING_WORKSPACE = ["upload", "list", "delete", "download"]
 
 
 def callback(
@@ -265,6 +265,43 @@ def delete_schema(
         )
         Console().print(panel)
         raise typer.Exit(code=1)
+
+
+@app.command(name="download", help="Download schemas from a workspace")
+def download_schemas_command(
+    ctx: typer.Context,
+    directory: Path = typer.Argument(
+        ...,
+        help="Directory to save the downloaded schemas",
+        file_okay=False,
+        dir_okay=True,
+        writable=True,
+    ),
+    name: Optional[str] = typer.Option(
+        None,
+        "--name",
+        "-n",
+        help="Filter schemas by name",
+    ),
+    exclude: Optional[List[str]] = typer.Option(
+        None,
+        "--exclude",
+        "-e",
+        help="List of schema names to exclude from download",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        "-o",
+        help="Overwrite existing schema files",
+    ),
+) -> None:
+    """Download schemas from a workspace."""
+    # Import the actual implementation from the download module
+    from argilla.cli.schemas.download import download_schemas
+
+    # Call the actual implementation
+    download_schemas(ctx, directory, name, exclude, overwrite)
 
 
 if __name__ == "__main__":
