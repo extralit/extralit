@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from uuid import UUID
@@ -20,13 +21,16 @@ from uuid import UUID
 import httpx
 
 from argilla._api._base import ResourceAPI
-from argilla._exceptions._api import api_error_handler
+from argilla._exceptions._api import api_error_handler, APIError
 from argilla._models._workspace import WorkspaceModel
 from argilla._models._files import ListObjectsResponse, ObjectMetadata, FileObjectResponse
 from argilla._models._documents import Document
 
 # Define fallback constants
 DEFAULT_SCHEMA_S3_PATH = "schemas/"
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 __all__ = ["WorkspacesAPI"]
 
@@ -127,16 +131,35 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
 
         Returns:
             A list of files.
+
+        Raises:
+            APIError: If the API request fails.
+            ValueError: If the workspace name is invalid.
         """
+        if not workspace_name:
+            logger.error("Workspace name cannot be empty")
+            raise ValueError("Workspace name cannot be empty")
+
+        logger.info(f"Listing files in workspace '{workspace_name}' with path '{path}'")
         url = f"/api/v1/files/{workspace_name}/{path}"
         params = {
             "recursive": recursive,
             "include_version": include_version,
         }
-        response = self.http_client.get(url=url, params=params)
-        response.raise_for_status()
 
-        return ListObjectsResponse(**response.json())
+        try:
+            response = self.http_client.get(url=url, params=params)
+            response.raise_for_status()
+
+            result = ListObjectsResponse(**response.json())
+            logger.info(f"Found {len(result.objects)} files in workspace '{workspace_name}'")
+            return result
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Failed to list files in workspace '{workspace_name}': {str(e)}")
+            raise APIError(f"Failed to list files: {str(e)}") from e
+        except Exception as e:
+            logger.error(f"Unexpected error listing files in workspace '{workspace_name}': {str(e)}")
+            raise
 
     @api_error_handler
     def get_file(self, workspace_name: str, path: str, version_id: Optional[str] = None) -> FileObjectResponse:
@@ -149,28 +172,54 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
 
         Returns:
             The file content and metadata.
+
+        Raises:
+            APIError: If the API request fails.
+            ValueError: If the workspace name or path is invalid.
+            FileNotFoundError: If the file does not exist.
         """
+        if not workspace_name:
+            logger.error("Workspace name cannot be empty")
+            raise ValueError("Workspace name cannot be empty")
+
+        if not path:
+            logger.error("File path cannot be empty")
+            raise ValueError("File path cannot be empty")
+
+        logger.info(f"Getting file '{path}' from workspace '{workspace_name}'")
         url = f"/api/v1/file/{workspace_name}/{path}"
         params = {"version_id": version_id} if version_id else {}
-        response = self.http_client.get(url=url, params=params)
-        response.raise_for_status()
 
-        # Create a FileObjectResponse with the content
-        file_response = FileObjectResponse(content=response.content)
+        try:
+            response = self.http_client.get(url=url, params=params)
+            response.raise_for_status()
 
-        # Get metadata if available
-        if "X-Amz-Meta-Version-Tag" in response.headers:
-            metadata = ObjectMetadata(
-                bucket_name=workspace_name,
-                object_name=path,
-                content_type=response.headers.get("Content-Type"),
-                etag=response.headers.get("ETag"),
-                version_id=version_id,
-                version_tag=response.headers.get("X-Amz-Meta-Version-Tag"),
-            )
-            file_response.metadata = metadata
+            # Create a FileObjectResponse with the content
+            file_response = FileObjectResponse(content=response.content)
 
-        return file_response
+            # Get metadata if available
+            if "X-Amz-Meta-Version-Tag" in response.headers:
+                metadata = ObjectMetadata(
+                    bucket_name=workspace_name,
+                    object_name=path,
+                    content_type=response.headers.get("Content-Type"),
+                    etag=response.headers.get("ETag"),
+                    version_id=version_id,
+                    version_tag=response.headers.get("X-Amz-Meta-Version-Tag"),
+                )
+                file_response.metadata = metadata
+
+            logger.info(f"Successfully retrieved file '{path}' from workspace '{workspace_name}'")
+            return file_response
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.error(f"File '{path}' not found in workspace '{workspace_name}'")
+                raise FileNotFoundError(f"File '{path}' not found in workspace '{workspace_name}'") from e
+            logger.error(f"Failed to get file '{path}' from workspace '{workspace_name}': {str(e)}")
+            raise APIError(f"Failed to get file: {str(e)}") from e
+        except Exception as e:
+            logger.error(f"Unexpected error getting file '{path}' from workspace '{workspace_name}': {str(e)}")
+            raise
 
     @api_error_handler
     def put_file(self, workspace_name: str, path: str, file_path: Path) -> ObjectMetadata:
@@ -183,16 +232,52 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
 
         Returns:
             The metadata of the uploaded file.
+
+        Raises:
+            APIError: If the API request fails.
+            ValueError: If the workspace name or path is invalid.
+            FileNotFoundError: If the local file does not exist.
+            PermissionError: If the local file cannot be read.
         """
+        if not workspace_name:
+            logger.error("Workspace name cannot be empty")
+            raise ValueError("Workspace name cannot be empty")
+
+        if not path:
+            logger.error("Remote path cannot be empty")
+            raise ValueError("Remote path cannot be empty")
+
+        if not file_path:
+            logger.error("Local file path cannot be empty")
+            raise ValueError("Local file path cannot be empty")
+
+        if not os.path.exists(file_path):
+            logger.error(f"Local file '{file_path}' does not exist")
+            raise FileNotFoundError(f"Local file '{file_path}' does not exist")
+
+        if not os.access(file_path, os.R_OK):
+            logger.error(f"Local file '{file_path}' cannot be read")
+            raise PermissionError(f"Local file '{file_path}' cannot be read")
+
+        logger.info(f"Uploading file '{file_path}' to workspace '{workspace_name}' as '{path}'")
         url = f"/api/v1/file/{workspace_name}/{path}"
         file_name = os.path.basename(file_path)
 
-        with open(file_path, 'rb') as file_data:
-            files = {"file": (file_name, file_data, "application/octet-stream")}
-            response = self.http_client.post(url=url, files=files)
-            response.raise_for_status()
+        try:
+            with open(file_path, 'rb') as file_data:
+                files = {"file": (file_name, file_data, "application/octet-stream")}
+                response = self.http_client.post(url=url, files=files)
+                response.raise_for_status()
 
-        return ObjectMetadata(**response.json())
+            metadata = ObjectMetadata(**response.json())
+            logger.info(f"Successfully uploaded file '{file_path}' to workspace '{workspace_name}' as '{path}'")
+            return metadata
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Failed to upload file '{file_path}' to workspace '{workspace_name}': {str(e)}")
+            raise APIError(f"Failed to upload file: {str(e)}") from e
+        except Exception as e:
+            logger.error(f"Unexpected error uploading file '{file_path}' to workspace '{workspace_name}': {str(e)}")
+            raise
 
     @api_error_handler
     def delete_file(self, workspace_name: str, path: str, version_id: Optional[str] = None) -> None:
@@ -202,11 +287,37 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             workspace_name: The name of the workspace.
             path: The path of the file to delete.
             version_id: The version ID of the file.
+
+        Raises:
+            APIError: If the API request fails.
+            ValueError: If the workspace name or path is invalid.
+            FileNotFoundError: If the file does not exist.
         """
+        if not workspace_name:
+            logger.error("Workspace name cannot be empty")
+            raise ValueError("Workspace name cannot be empty")
+
+        if not path:
+            logger.error("File path cannot be empty")
+            raise ValueError("File path cannot be empty")
+
+        logger.info(f"Deleting file '{path}' from workspace '{workspace_name}'")
         url = f"/api/v1/file/{workspace_name}/{path}"
         params = {"version_id": version_id} if version_id else {}
-        response = self.http_client.delete(url=url, params=params)
-        response.raise_for_status()
+
+        try:
+            response = self.http_client.delete(url=url, params=params)
+            response.raise_for_status()
+            logger.info(f"Successfully deleted file '{path}' from workspace '{workspace_name}'")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.error(f"File '{path}' not found in workspace '{workspace_name}'")
+                raise FileNotFoundError(f"File '{path}' not found in workspace '{workspace_name}'") from e
+            logger.error(f"Failed to delete file '{path}' from workspace '{workspace_name}': {str(e)}")
+            raise APIError(f"Failed to delete file: {str(e)}") from e
+        except Exception as e:
+            logger.error(f"Unexpected error deleting file '{path}' from workspace '{workspace_name}': {str(e)}")
+            raise
 
     @api_error_handler
     def exists_file(self, workspace_name: str, path: str, file_path: Path) -> bool:
