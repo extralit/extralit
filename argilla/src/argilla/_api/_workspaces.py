@@ -21,7 +21,7 @@ from uuid import UUID
 import httpx
 
 from argilla._api._base import ResourceAPI
-from argilla._exceptions._api import api_error_handler, APIError
+from argilla._exceptions._api import api_error_handler, ArgillaAPIError
 from argilla._models._workspace import WorkspaceModel
 from argilla._models._files import ListObjectsResponse, ObjectMetadata, FileObjectResponse
 from argilla._models._documents import Document
@@ -133,7 +133,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             A list of files.
 
         Raises:
-            APIError: If the API request fails.
+            ArgillaAPIError: If the API request fails.
             ValueError: If the workspace name is invalid.
         """
         if not workspace_name:
@@ -156,7 +156,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             return result
         except httpx.HTTPStatusError as e:
             logger.error(f"Failed to list files in workspace '{workspace_name}': {str(e)}")
-            raise APIError(f"Failed to list files: {str(e)}") from e
+            raise ArgillaAPIError(f"Failed to list files: {str(e)}") from e
         except Exception as e:
             logger.error(f"Unexpected error listing files in workspace '{workspace_name}': {str(e)}")
             raise
@@ -174,7 +174,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             The file content and metadata.
 
         Raises:
-            APIError: If the API request fails.
+            ArgillaAPIError: If the API request fails.
             ValueError: If the workspace name or path is invalid.
             FileNotFoundError: If the file does not exist.
         """
@@ -216,7 +216,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
                 logger.error(f"File '{path}' not found in workspace '{workspace_name}'")
                 raise FileNotFoundError(f"File '{path}' not found in workspace '{workspace_name}'") from e
             logger.error(f"Failed to get file '{path}' from workspace '{workspace_name}': {str(e)}")
-            raise APIError(f"Failed to get file: {str(e)}") from e
+            raise ArgillaAPIError(f"Failed to get file: {str(e)}") from e
         except Exception as e:
             logger.error(f"Unexpected error getting file '{path}' from workspace '{workspace_name}': {str(e)}")
             raise
@@ -234,7 +234,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             The metadata of the uploaded file.
 
         Raises:
-            APIError: If the API request fails.
+            ArgillaAPIError: If the API request fails.
             ValueError: If the workspace name or path is invalid.
             FileNotFoundError: If the local file does not exist.
             PermissionError: If the local file cannot be read.
@@ -274,7 +274,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             return metadata
         except httpx.HTTPStatusError as e:
             logger.error(f"Failed to upload file '{file_path}' to workspace '{workspace_name}': {str(e)}")
-            raise APIError(f"Failed to upload file: {str(e)}") from e
+            raise ArgillaAPIError(f"Failed to upload file: {str(e)}") from e
         except Exception as e:
             logger.error(f"Unexpected error uploading file '{file_path}' to workspace '{workspace_name}': {str(e)}")
             raise
@@ -289,7 +289,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             version_id: The version ID of the file.
 
         Raises:
-            APIError: If the API request fails.
+            ArgillaAPIError: If the API request fails.
             ValueError: If the workspace name or path is invalid.
             FileNotFoundError: If the file does not exist.
         """
@@ -314,7 +314,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
                 logger.error(f"File '{path}' not found in workspace '{workspace_name}'")
                 raise FileNotFoundError(f"File '{path}' not found in workspace '{workspace_name}'") from e
             logger.error(f"Failed to delete file '{path}' from workspace '{workspace_name}': {str(e)}")
-            raise APIError(f"Failed to delete file: {str(e)}") from e
+            raise ArgillaAPIError(f"Failed to delete file: {str(e)}") from e
         except Exception as e:
             logger.error(f"Unexpected error deleting file '{path}' from workspace '{workspace_name}': {str(e)}")
             raise
