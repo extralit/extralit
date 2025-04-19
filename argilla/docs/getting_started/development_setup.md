@@ -8,67 +8,116 @@ This guide provides detailed instructions for setting up the Extralit developmen
 
 ## Option 1: GitHub Codespaces (Recommended for Beginners)
 
-GitHub Codespaces provides a fully configured development environment with all necessary tools pre-installed, making it the easiest way to get started.
+GitHub Codespaces provides a fully configured cloud development environment with all necessary tools pre-installed, making it the easiest way to get started.
 
-### 1. Setting Up a Codespace
-
-There are two ways to create a Codespace for the Extralit project:
-
-#### Method A: From Your Fork
-1. Fork the [Extralit repository](https://github.com/extralit/extralit) to your GitHub account
-2. Navigate to your forked repository
-3. Click the "Code" button
-4. Select the "Codespaces" tab
-5. Click "Create codespace on develop" to launch a new development environment
-
-#### Method B: Using Existing Repository
-1. Go to [GitHub Codespaces](https://github.com/codespaces)
-2. Click "New codespace"
-3. Select the Extralit repository or enter the repository URL
-4. Choose the branch (typically "develop")
-5. Select your preferred machine type
-6. Click "Create codespace"
-
-The Codespace will automatically:
+The Codespaces will automatically:
 - Install all required development tools
 - Set up a local Kubernetes cluster
 - Configure necessary environment variables
 - Install the Extralit packages in development mode
 
-### 2. Deploying the Services
+### 1. Setting Up a Codespace
 
-Once your Codespace is ready:
+=== "New Contributors (Fork)"
+    This approach is recommended for contributors who don't have direct write access to the main repository:
 
-1. Open a terminal in the Codespace and deploy the services using Tilt:
+    1. Fork the [Extralit repository](https://github.com/extralit/extralit) to your GitHub account
+    2. Navigate to your forked repository
+    3. Click the "Code" button
+    4. Select the "Codespaces" tab
+    5. Click on the kabob menu to select "New with options..." to launch a new development environment
 
-   ```bash
-   ENV=dev DOCKER_REPO=localhost:5005 tilt up
-   ```
+=== "Existing Contributors"
+    This approach is for maintainers and contributors with direct push access to the main Extralit repository:
 
-2. Monitor deployment in the Tilt UI at `http://localhost:10350`, which will be automatically forwarded
+    1. Use this direct link to create a Codespace with the preferred configuration:
+       [Create Extralit Codespace](https://github.com/codespaces/new?skip_quickstart=true&machine=standardLinux32gb&repo=708248756&ref=develop&devcontainer_path=.devcontainer%2Fdevcontainer.json)
+    2. Select your preferred machine type (recommended: 4-core, 16GB RAM)
+    3. Click "Create codespace"
 
-3. If you encounter PV (Persistent Volume) issues, deploy services incrementally:
+Then, select from three different development environments through devcontainers, each optimized for different purposes:
 
-   ```bash
-   ENV=dev DOCKER_REPO=localhost:5005 tilt up elasticsearch
-   ENV=dev DOCKER_REPO=localhost:5005 tilt up main-db
-   ENV=dev DOCKER_REPO=localhost:5005 tilt up minio
-   ENV=dev DOCKER_REPO=localhost:5005 tilt up weaviate
-   ENV=dev DOCKER_REPO=localhost:5005 tilt up
-   ```
+=== "Tilt on K8s (Recommended)"
+    This environment provides full-stack development with Kubernetes and live-reloading capabilities:
+    
+    ```bash
+    # Initialize the Kubernetes cluster and deploy all services
+    tilt up
+    ```
 
-### 3. Alternative: Start the Development Server Directly
+    Then, simply monitor the deployment in the Tilt UI. The URL will be available in the "Ports" tab, usually http://localhost:10350, or another URL in your VSCode Ports tab.
+    
+    **Advanced Configuration:** You can customize your deployment by setting environment variables:
+    
+    ```bash
+    # Use external database instead of deploying PostgreSQL
+    export ARGILLA_DATABASE_URL="postgresql://user:password@external-host:5432/dbname"
+    
+    # Use external S3-compatible storage instead of deploying MinIO
+    export S3_ENDPOINT="https://your-s3-endpoint"
+    export S3_ACCESS_KEY="your-access-key"
+    export S3_SECRET_KEY="your-secret-key"
+    
+    # Use external OpenAI API key
+    export OPENAI_API_KEY="your-openai-api-key"
+    
+    # Use external Weaviate instance
+    export WCS_HTTP_URL="https://your-weaviate-instance"
+    export WCS_GRPC_URL="grpc://your-weaviate-instance:50051"
+    export WCS_API_KEY="your-weaviate-api-key"
+    
+    # Start Tilt with custom configuration
+    tilt up
+    ```
 
-If you prefer not to use Tilt, you can start the server directly:
+    To edit the environment variables used by all services, go to `examples/deployments/k8s/extralit-configs.yaml`.
 
-```bash
-# Check running containers
-docker ps
+=== "Docker-Compose"
+    This environment uses Docker Compose for a simpler, leaner setup without Kubernetes:
+    
+    ```bash
+    # Start all required services using Docker Compose (if not already started automatically in the devcontainer)
+    cd .devcontainer/docker-compose
+    docker-compose up -d
+    
+    # Install server dependencies
+    cd argilla-server
+    pdm install
+    
+    # Start the server in development mode
+    pdm run server-dev
+    ```
 
-# Start the development server
-cd argilla-server
-pdm run server-dev
-```
+=== "UI/UX Design"
+    This lightweight environment is focused solely on frontend development for UI changes only. It will connect directly to a public demo HF Spaces server instance and automatically load the live-reloading frontend as you make changes.
+    
+    If 
+    ```bash
+    # Navigate to the frontend directory
+    cd argilla-frontend
+    
+    # Install dependencies
+    npm install
+    
+    # Start the development server with mock API
+    API_BASE_URL=https://extralit-public-demo.hf.space/ npm run dev
+    ```
+    
+### 3. Development workflow*
+
+    - **Backend Development**: Changes to `argilla-server/src/argilla_server/` or `argilla/src/{argilla,extralit}/` are automatically updated if Tilt is running
+    - **Python SDK packages**
+      ```bash
+      cd argilla
+      pdm install
+      ```
+    - **Frontend Development**: For frontend live-reloading:
+      ```bash
+      cd argilla/argilla-frontend
+      npm install
+      npm run dev
+      ```
+
 
 ### 4. Access the Web Interface
 
@@ -76,18 +125,10 @@ pdm run server-dev
 - Click on the link to open the Extralit web interface
 - Log in with the default credentials:
   - Username: `argilla`
-  - Password: `1234`
+  - Password: `12345678`
   - API Key: `argilla.apikey`
 
-### 5. Development Workflow
 
-- **Backend Development**: Changes to `src/argilla_server/` or `src/extralit/` are automatically updated while Tilt is running
-- **Frontend Development**: For frontend changes:
-  ```bash
-  cd argilla/argilla-frontend
-  npm install
-  npm run dev
-  ```
 ## Option 2: Local Development Setup
 
 ### Prerequisites

@@ -29,7 +29,7 @@ As an Extralit developer, you are already part of the community, and your contri
 
 ## Environment setup
 
-Extralit offers a comprehensive guide for setting up your development environment. For detailed instructions, please refer to our [Development Environment Setup Guide](../getting_started/development_setup.md).
+[:octicons-tools-16: Development Environment Setup Guide](../getting_started/development_setup.md){.md-button}
 
 This guide covers everything you need to get started, including:
 
@@ -44,17 +44,23 @@ Once you have your environment set up, you can return to this guide to learn mor
 
 The Extralit repository has a monorepo structure, which means that all the components are located in the same repository: [`extralit/extralit`](https://github.com/extralit/extralit). This repo is divided into the following folders:
 
-- [`extralit`](https://github.com/extralit/extralit/tree/develop/argilla/src/extralit): The FastAPI server project for extraction
-- [`argilla/docs`](https://github.com/extralit/extralit/tree/develop/argilla/docs): The documentation project
-- [`extralit`](https://github.com/extralit/extralit/tree/develop/argilla): The argilla SDK project
-- [`argilla-server`](https://github.com/extralit/extralit/tree/develop/argilla-server): The FastAPI server project for annotation
-- [`argilla-frontend`](https://github.com/extralit/extralit/tree/develop/argilla-frontend): The Vue.js UI project
+- [`argilla/src/extralit/`](https://github.com/extralit/extralit/tree/develop/argilla/src/extralit): The FastAPI server project for extraction
+- [`argilla/docs/`](https://github.com/extralit/extralit/tree/develop/argilla/docs): The documentation project
+- [`argilla/src/argilla/`](https://github.com/extralit/extralit/tree/develop/argilla): The argilla SDK project
+- [`argilla-server/src/argilla_server/`](https://github.com/extralit/extralit/tree/develop/argilla-server): The FastAPI server project for annotation
+- [`argilla-frontend/`](https://github.com/extralit/extralit/tree/develop/argilla-frontend): The Vue.js UI project
 - [`examples`](https://github.com/extralit/extralit/tree/develop/examples): Example resources for deployments, scripts and notebooks
 
 !!! note "How to contribute?"
     Before starting to develop, we recommend reading our [contribution guide](contributor.md) to understand the contribution process and the guidelines to follow. Once you have [cloned the Extralit repository](contributor.md#fork-the-extralit-repository) and [checked out to the correct branch](contributor.md#create-a-new-branch), you can start setting up your development environment.
 
-## Manual Setup: Alternative Development Options
+??? example "Argilla Directory Structure"
+    ![Argilla Repository Structure](../assets/images/community/developer/repo-visualizer-argilla.svg)
+
+??? example "Argilla Server Directory Structure"
+    ![Argilla Server Repository Structure](../assets/images/community/developer/repo-visualizer-argilla-server.svg)
+
+## Development workflow
 
 If you prefer not to use Codespaces, you can set up your development environment manually using the following approaches.
 
@@ -96,9 +102,26 @@ pdm run format
 pdm run lint
 ```
 
+### Write clear commit messages
+
+!!! note "Commit message format"
+    When writing commit messages, follow this structure:
+    
+        short one line title
+
+        Longer description of what the change does (if the title isn't enough).
+
+        An explanation of why the change is being made.
+
+        Perhaps a discussion of context and/or alternatives that were
+        considered.
+
+This format helps document the code, keeps the commit history clean, and makes it easier to understand changes. Tools like GitLens will display these messages directly on code lines, improving collaboration.
+
+
 ### Running tests
 
-Running tests at the end of every development cycle is indispensable to ensure no breaking changes.
+Running tests at the end of every development cycle is indispensable to ensure no breaking changes. GH Actions Workflows automatically run the tests on every commit and PR, but you can also run them locally.
 
 ```sh
 # Run all tests
@@ -115,63 +138,6 @@ pytest tests/unit
     ```sh
         pdm run all
     ```
-
-### Manual Kubernetes Setup
-
-If you want to set up a local Kubernetes cluster manually:
-
-1. Install required tools:
-   - [kubectl](https://kubernetes.io/docs/tasks/tools/)
-   - [Tilt](https://docs.tilt.dev/install.html)
-   - [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
-   - [ctlptl](https://github.com/tilt-dev/ctlptl/tree/main#how-do-i-install-it)
-
-2. Create a local Kubernetes cluster:
-   ```bash
-   kind create cluster --name extralit-dev
-   ```
-
-3. For local development with image registry:
-   ```bash
-   ctlptl create registry ctlptl-registry --port=5005
-   ctlptl create cluster extralit-dev --registry=ctlptl-registry
-   ```
-
-4. Apply storage configurations:
-   ```bash
-   ctlptl apply -f k8s/kind/kind-config.yaml
-   kubectl --context kind-kind taint node kind-control-plane node-role.kubernetes.io/control-plane:NoSchedule-
-   ```
-
-5. Create namespace and deploy services:
-   ```bash
-   kubectl create ns extralit-dev
-   kubectl apply -f extralit-secrets.yaml -n extralit-dev
-   kubectl apply -f langfuse-secrets.yaml -n extralit-dev
-   kubectl apply -f weaviate-api-keys.yaml -n extralit-dev
-   ```
-
-6. Deploy with Tilt:
-   ```bash
-   ENV=dev DOCKER_REPO=localhost:5005 tilt up --namespace extralit-dev --context kind-extralit-dev
-   ```
-
-### Set up the databases directly
-
-If you prefer to run the databases directly without Kubernetes:
-
-#### Vector database
-
-```sh
-# Extralit supports ElasticSearch versions >=8.5
-docker run -d --name elasticsearch-for-extralit -p 9200:9200 -p 9300:9300 -e "ES_JAVA_OPTS=-Xms512m -Xmx512m" -e "discovery.type=single-node" -e "xpack.security.enabled=false" docker.elastic.co/elasticsearch/elasticsearch:8.5.3
-```
-
-#### Relational database
-
-```sh
-docker run -d --name postgres-for-extralit -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DB=postgres postgres:14
-```
 
 ## Set up the documentation
 
@@ -197,6 +163,62 @@ As mentioned, we use [`mkdocs`](https://www.mkdocs.org/) to build the documentat
 
 !!! note "Contribute with a tutorial"
     You can also contribute a tutorial (`.ipynb`) to the "Community" section. We recommend aligning the tutorial with the structure of the existing tutorials. For an example, check [this tutorial](../tutorials/getting_started.ipynb).
+
+## Set up the databases
+
+Extralit uses a PostgreSQL database to store all application data. Understanding the database schema is essential for developers working on backend components or making changes that affect data storage.
+
+![Database Schema](../assets/images/community/developer/database_tables.png)
+
+### Working with Database Revisions
+
+When making changes to the database schema, you need to create database revisions using Alembic. This ensures database migrations are tracked and applied consistently across different environments.
+
+#### Creating a New Revision
+
+1. Make your changes to the SQLAlchemy models
+2. Generate a new revision file:
+
+```bash
+cd argilla-server
+PYTHONPATH=. alembic revision --autogenerate -m "Brief description of the change"
+```
+
+3. Review the generated revision file in `argilla-server/migrations/versions/`
+4. Test the migration:
+
+```bash
+# Apply the migration
+PYTHONPATH=. alembic upgrade head
+
+# Rollback if needed
+PYTHONPATH=. alembic downgrade -1
+```
+
+#### Applying Migrations
+
+To apply all pending migrations:
+
+```bash
+PYTHONPATH=. alembic upgrade head
+```
+
+To check the current database version:
+
+```bash
+PYTHONPATH=. alembic current
+```
+
+#### Guidelines for Database Changes
+
+- Always create migrations for schema changes
+- Test migrations in both directions (upgrade and downgrade)
+- Keep migrations backward compatible when possible
+- Document complex migrations with comments
+
+!!! warning "Production Databases"
+    Be extremely cautious when applying migrations to production databases. Always backup your database before applying migrations and test thoroughly in staging environments first.
+
 
 ## Troubleshooting
 
