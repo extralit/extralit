@@ -129,4 +129,4 @@ format = "black ."
 all = { composite = ["format", "lint", "test"] }
 
 [project.scripts]
-argilla = "argilla.cli.app:app"
+extralit = "argilla.cli.app:app"
