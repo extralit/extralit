@@ -14,13 +14,11 @@
 
 """
 Argilla client module.
-Import the main Argilla client class from the correct module.
+Re-export the Argilla class from the proper module to avoid circular imports.
 """
 
-# Import the official Argilla client from the main module
-from argilla._api._client import APIClient as ArgillaClient
+# Import from core module directly
+from argilla.client.core import Argilla
 
-# Re-export the class with the expected name
-Argilla = ArgillaClient
-
+# Keep only Argilla in __all__ to control what's exported
 __all__ = ["Argilla"]
