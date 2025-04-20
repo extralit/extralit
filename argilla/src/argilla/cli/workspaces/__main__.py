@@ -42,10 +42,19 @@ def get_workspaces() -> list[Dict[str, Any]]:
     client = init_callback()
 
     try:
-        # Make a request to get workspaces
-        workspaces = client._get_workspace_list()
-
-        # If we have a successful response, return the workspaces
+        # Use the proper API client to get workspaces
+        workspaces_objects = client.workspaces.list()
+        
+        # Convert workspace objects to dictionaries with the expected format
+        workspaces = []
+        for workspace in workspaces_objects:
+            workspaces.append({
+                "id": str(workspace.id),
+                "name": workspace.name,
+                "inserted_at": workspace._model.inserted_at if hasattr(workspace._model, 'inserted_at') else datetime.now(),
+                "updated_at": workspace._model.updated_at if hasattr(workspace._model, 'updated_at') else datetime.now(),
+            })
+            
         return workspaces
     except Exception as e:
         # If there's an error, log it and return mock data
@@ -73,12 +82,22 @@ def get_user(username: str) -> Dict[str, Any]:
     client = init_callback()
 
     try:
-        # Get the user via the API
-        user = client.get_user(username=username)
-
-        # Add is_owner flag based on role
-        user["is_owner"] = user["role"] in ["admin", "owner"]
-
+        # Get the user via the proper API client
+        user_obj = client.users(username=username)
+        
+        if not user_obj:
+            raise ValueError(f"User with username={username} not found.")
+            
+        # Convert user object to dictionary with the expected format
+        user = {
+            "id": str(user_obj.id),
+            "username": user_obj.username,
+            "role": user_obj.role,
+            "first_name": user_obj.first_name if hasattr(user_obj, 'first_name') else "",
+            "last_name": user_obj.last_name if hasattr(user_obj, 'last_name') else "",
+            "is_owner": user_obj.role in ["admin", "owner"]
+        }
+        
         return user
     except Exception as e:
         # If there's an error, raise a ValueError
@@ -142,8 +161,12 @@ def create_workspace(
         # Initialize the client
         client = init_callback()
 
-        # Create the workspace via the API
-        client.create_workspace(name=name)
+        # Create a workspace object with the provided name
+        from argilla.workspaces import Workspace
+        workspace = Workspace(name=name)
+        
+        # Add the workspace using the proper API
+        client.workspaces.add(workspace)
 
         # Display success message
         panel = get_argilla_themed_panel(
@@ -228,9 +251,20 @@ def add_user(
 
         # Initialize the client
         client = init_callback()
-
-        # Add the user to the workspace via the API
-        client.add_user_to_workspace(username=username, workspace_name=workspace['name'], role=role)
+        
+        # Get the workspace object
+        workspace_obj = client.workspaces(name=workspace['name'])
+        if not workspace_obj:
+            raise ValueError(f"Workspace with name={workspace['name']} not found.")
+            
+        # Get the user object
+        user_obj = client.users(username=username)
+        if not user_obj:
+            raise ValueError(f"User with username={username} not found.")
+            
+        # Add the user to the workspace using the proper API
+        from argilla._api._workspaces import WorkspaceUserRole
+        workspace_obj.add_user(user=user_obj, role=WorkspaceUserRole(role))
 
         # Display success message
         panel = get_argilla_themed_panel(
@@ -283,9 +317,19 @@ def delete_user(
 
         # Initialize the client
         client = init_callback()
-
-        # Remove the user from the workspace via the API
-        client.remove_user_from_workspace(username=username, workspace_name=workspace['name'])
+        
+        # Get the workspace object
+        workspace_obj = client.workspaces(name=workspace['name'])
+        if not workspace_obj:
+            raise ValueError(f"Workspace with name={workspace['name']} not found.")
+            
+        # Get the user object
+        user_obj = client.users(username=username)
+        if not user_obj:
+            raise ValueError(f"User with username={username} not found.")
+            
+        # Remove the user from the workspace using the proper API
+        workspace_obj.remove_user(user=user_obj)
 
         # Display success message
         panel = get_argilla_themed_panel(
