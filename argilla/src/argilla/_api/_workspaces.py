@@ -26,8 +26,7 @@ from argilla._models._workspace import WorkspaceModel
 from argilla._models._files import ListObjectsResponse, ObjectMetadata, FileObjectResponse
 from argilla._models._documents import Document
 
-# Define fallback constants
-DEFAULT_SCHEMA_S3_PATH = "schemas/"
+from extralit.constants import DEFAULT_SCHEMA_S3_PATH
 
 # Set up logging
 logger = logging.getLogger(__name__)

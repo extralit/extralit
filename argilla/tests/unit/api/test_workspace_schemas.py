@@ -9,11 +9,12 @@ import pytest
 
 from argilla._api._workspaces import WorkspacesAPI
 from argilla._models._files import ListObjectsResponse, ObjectMetadata, FileObjectResponse
+from extralit.constants import DEFAULT_SCHEMA_S3_PATH
 
 # Mock the pandera and SchemaStructure imports
 try:
     import pandera as pa
-    from extralit.extraction.models import SchemaStructure, DEFAULT_SCHEMA_S3_PATH
+    from extralit.extraction.models import SchemaStructure
     PANDERA_AVAILABLE = True
 except ImportError:
     PANDERA_AVAILABLE = False

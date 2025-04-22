@@ -7,13 +7,13 @@ from pathlib import Path
 from typing import List, Optional, Union, Dict
 
 import pandera as pa
-import argilla as rg
 from minio import Minio
 from pandera.api.base.model import MetaModel
 from pandera.io import from_json, from_yaml
 from pydantic.v1 import BaseModel, Field, validator
 
-DEFAULT_SCHEMA_S3_PATH = 'schemas/'
+import argilla as rg
+from extralit.constants import DEFAULT_SCHEMA_S3_PATH
 
 _LOGGER = logging.getLogger(__name__)
 

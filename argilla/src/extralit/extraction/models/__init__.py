@@ -1,7 +1,8 @@
+from ...constants import DEFAULT_SCHEMA_S3_PATH
 from extralit.schema.checks import register_check_methods
 register_check_methods()
 
-from .schema import SchemaStructure, DEFAULT_SCHEMA_S3_PATH
+from .schema import SchemaStructure
 from .response import ResponseResults
 from .paper import PaperExtraction
 

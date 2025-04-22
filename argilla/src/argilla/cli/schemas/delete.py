@@ -4,7 +4,8 @@ from typing import Dict, Optional, List
 import typer
 
 from argilla.client.workspaces import Workspace
-from extralit.extraction.models import SchemaStructure, DEFAULT_SCHEMA_S3_PATH
+from extralit.extraction.models import SchemaStructure
+from extralit.constants import DEFAULT_SCHEMA_S3_PATH
 
 def delete_schema(
     ctx: typer.Context,
