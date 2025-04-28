@@ -52,9 +52,6 @@ def whoami() -> None:
                 f"- **Role**: {user.role}\n"
                 f"- **First name**: {user.first_name}\n"
                 f"- **Last name**: {user.last_name}\n"
-                f"- **API Key**: {user.api_key}\n"
-                f"- **Workspaces**: {', '.join(user.workspaces)}\n"
-                f"- **Server URL**: {user.api_url}"
             ),
             title="Current User",
             title_align="left",
