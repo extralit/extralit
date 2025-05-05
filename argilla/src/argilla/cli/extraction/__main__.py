@@ -128,7 +128,7 @@ def callback(
         raise typer.Exit(code=1)
 
 
-# Typer app and callback
+
 app = typer.Typer(
     name="extraction",
     help="Commands for data extraction operations.",

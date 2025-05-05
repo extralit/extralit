@@ -17,7 +17,6 @@ import typer
 from argilla.cli.rich import get_argilla_themed_panel
 from rich.console import Console
 
-# This will be updated when we implement the login functionality
 def echo_in_panel(text, title=None, title_align="center", success=True):
     """Echoes a message in a rich panel with Argilla theme."""
     panel = get_argilla_themed_panel(
@@ -42,14 +41,11 @@ def init_callback() -> None:
         raise typer.Exit(code=1)
 
     try:
-        # Initialize the client using credentials
         from argilla.client import Argilla
         client = Argilla.from_credentials()
 
-        # Validate connection by getting current user
         client.me
 
-        # Return the initialized client for use in commands
         return client
     except Exception as e:
         echo_in_panel(

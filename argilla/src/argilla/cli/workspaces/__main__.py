@@ -104,7 +104,7 @@ def get_user(username: str) -> Dict[str, Any]:
         raise ValueError(f"User with username={username} does not exist: {str(e)}")
 
 
-# Typer app and callback
+
 _COMMANDS_REQUIRING_WORKSPACE = ["add-user", "delete-user"]
 
 

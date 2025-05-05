@@ -27,7 +27,6 @@ def login_impl(api_url: str, api_key: str, workspace: Optional[str] = None, extr
     """
     from argilla.client.login import login
 
-    # Call the login function to validate and store credentials
     login(api_url=api_url, api_key=api_key, workspace=workspace, extra_headers=extra_headers)
 
     return True
@@ -35,9 +34,9 @@ def login_impl(api_url: str, api_key: str, workspace: Optional[str] = None, extr
 
 @app.callback(help="Login to an Extralit Server")
 def login(
-    api_url: str = typer.Option(..., prompt="API URL", help="The URL of the Extralit Server to login in to"),
+    api_url: str = typer.Option(..., prompt="Enter API URL", help="The URL of the Extralit Server to login in to"),
     api_key: str = typer.Option(
-        ..., prompt="API Key", hide_input=True, help="The API key for logging into the Extralit Server"
+        ..., prompt="Enter API Key", hide_input=True, help="The API key for logging into the Extralit Server"
     ),
     workspace: Optional[str] = typer.Option(
         None, help="The default workspace over which the operations will be performed"
@@ -57,7 +56,6 @@ def login(
         if extra_headers:
             headers = json.loads(extra_headers)
 
-        # Call the implementation function
         login_impl(api_url=api_url, api_key=api_key, workspace=workspace, extra_headers=headers)
 
     except json.JSONDecodeError:

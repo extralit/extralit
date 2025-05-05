@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Collection classes for Argilla resources.
-"""
-
 import warnings
 from abc import abstractmethod
 from collections.abc import Sequence

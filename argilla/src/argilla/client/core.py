@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Core implementation of the Argilla client.
-"""
-
 import os
 import warnings
 from abc import abstractmethod

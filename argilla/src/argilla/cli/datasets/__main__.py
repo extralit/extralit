@@ -31,7 +31,6 @@ class DatasetType(str, Enum):
     FEEDBACK = "feedback"
 
 
-# Helper functions for dataset operations
 def get_dataset(name: str, workspace: Optional[str] = None, client=None) -> Dict[str, Any]:
     """Get a dataset by name and optional workspace."""
     # Use the client to get the dataset
@@ -50,7 +49,6 @@ def get_datasets(workspace: Optional[str] = None, type_: Optional[DatasetType] =
     return client.list_datasets(workspace=workspace, type_=type_)
 
 
-# Typer app and callback
 _COMMANDS_REQUIRING_DATASET = ["delete", "push-to-huggingface"]
 
 
