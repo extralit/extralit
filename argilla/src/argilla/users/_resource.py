@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from uuid import UUID
 
-from argilla import Workspace
 from argilla._api import UsersAPI
 from argilla._models import UserModel, Role
 from argilla._resource import Resource
-from argilla.client import Argilla
+
+if TYPE_CHECKING:
+    from argilla.client.core import Argilla
+    from argilla.workspaces._resource import Workspace
 
 
 class User(Resource):
@@ -62,6 +64,7 @@ class User(Resource):
         Returns:
             User: The initialized user object
         """
+        from argilla.client.core import Argilla
         client = client or Argilla._get_default()
         super().__init__(client=client, api=client.api.users)
 

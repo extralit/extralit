@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from enum import Enum
 
 import typer
@@ -22,31 +22,8 @@ from argilla.cli.rich import get_argilla_themed_panel
 from rich.console import Console
 from rich.table import Table
 
-
-class DatasetType(str, Enum):
-    """Dataset types in the system."""
-    TEXT_CLASSIFICATION = "text_classification"
-    TOKEN_CLASSIFICATION = "token_classification"
-    TEXT_GENERATION = "text_generation"
-    FEEDBACK = "feedback"
-
-
-def get_dataset(name: str, workspace: Optional[str] = None, client=None) -> Dict[str, Any]:
-    """Get a dataset by name and optional workspace."""
-    # Use the client to get the dataset
-    if client is None:
-        client = init_callback()
-
-    return client.get_dataset(name=name, workspace=workspace)
-
-
-def get_datasets(workspace: Optional[str] = None, type_: Optional[DatasetType] = None, client=None) -> List[Dict[str, Any]]:
-    """Get list of datasets with optional filtering."""
-    # Use the client to list datasets
-    if client is None:
-        client = init_callback()
-
-    return client.list_datasets(workspace=workspace, type_=type_)
+if TYPE_CHECKING:
+    from argilla.client.core import Argilla
 
 
 _COMMANDS_REQUIRING_DATASET = ["delete", "push-to-huggingface"]
@@ -58,7 +35,7 @@ def callback(
     workspace: Optional[str] = typer.Option(None, help="The name of the workspace where the dataset belongs"),
 ) -> None:
     """Callback for dataset commands."""
-    init_callback()
+    client = init_callback()
 
     if ctx.invoked_subcommand not in _COMMANDS_REQUIRING_DATASET:
         return
@@ -69,7 +46,7 @@ def callback(
         )
 
     try:
-        dataset = get_dataset(name=name, workspace=workspace)
+        dataset = client(name=name, workspace=workspace)
         ctx.obj = dataset
     except ValueError as e:
         panel = get_argilla_themed_panel(
@@ -96,44 +73,39 @@ app = typer.Typer(help="Commands for dataset management", no_args_is_help=True, 
 
 @app.command(name="list", help="List datasets linked to user's workspaces")
 def list_datasets(
-    workspace: Optional[str] = typer.Option(None, help="Filter datasets by workspace"),
-    type_: Optional[DatasetType] = typer.Option(
-        None,
-        "--type",
-        help="The type of datasets to be listed.",
-    ),
+    workspace: str = typer.Option(None, help="Filter datasets by workspace"),
 ) -> None:
     """List datasets with optional filtering by workspace and type."""
     try:
-        # Initialize the client
         client = init_callback()
 
-        # Get datasets using the client
-        datasets = client.list_datasets(workspace=workspace, type_=type_)
+        datasets = client.datasets(workspace=workspace)
 
-        table = Table(title="Datasets", show_lines=True)
-        for column in ("ID", "Name", "Workspace", "Type", "Tags", "Creation Date", "Last Update Date"):
-            table.add_column(column, justify="center" if column != "Tags" else "left")
+        print(datasets)
 
-        for dataset in datasets:
-            # Format tags as bullet points
-            tags_text = ""
-            for i, (tag, description) in enumerate(dataset["tags"].items()):
-                tags_text += f"• [bold]{tag}[/bold]: {description}"
-                if i < len(dataset["tags"]) - 1:
-                    tags_text += "\n"
+        # table = Table(title="Datasets", show_lines=True)
+        # for column in ("ID", "Name", "Workspace", "Type", "Tags", "Creation Date", "Last Update Date"):
+        #     table.add_column(column, justify="center" if column != "Tags" else "left")
 
-            table.add_row(
-                dataset["id"],
-                dataset["name"],
-                dataset["workspace"],
-                dataset["type"].value if isinstance(dataset["type"], DatasetType) else str(dataset["type"]),
-                tags_text,
-                dataset["created_at"].isoformat(sep=" "),
-                dataset["updated_at"].isoformat(sep=" "),
-            )
+        # for dataset in datasets:
+        #     # Format tags as bullet points
+        #     tags_text = ""
+        #     for i, (tag, description) in enumerate(dataset["tags"].items()):
+        #         tags_text += f"• [bold]{tag}[/bold]: {description}"
+        #         if i < len(dataset["tags"]) - 1:
+        #             tags_text += "\n"
 
-        Console().print(table)
+        #     table.add_row(
+        #         dataset["id"],
+        #         dataset["name"],
+        #         dataset["workspace"],
+        #         str(dataset["type"]),
+        #         tags_text,
+        #         dataset["created_at"].isoformat(sep=" "),
+        #         dataset["updated_at"].isoformat(sep=" "),
+        #     )
+
+        # Console().print(table)
     except Exception as e:
         panel = get_argilla_themed_panel(
             f"An unexpected error occurred when trying to list datasets: {str(e)}",
@@ -237,7 +209,6 @@ def push_to_huggingface(
 def create_dataset(
     name: str = typer.Option(..., prompt=True, help="The name of the dataset to be created"),
     workspace: Optional[str] = typer.Option(None, help="The workspace where the dataset will be created"),
-    type_: DatasetType = typer.Option(DatasetType.TEXT_CLASSIFICATION, "--type", help="The type of dataset to create"),
 ) -> None:
     """Create a new dataset in the system."""
     try:
@@ -245,7 +216,7 @@ def create_dataset(
         client = init_callback()
 
         # Create the dataset using the client
-        dataset = client.create_dataset(name=name, type_=type_, workspace=workspace)
+        dataset = client.create_dataset(name=name, workspace=workspace)
 
         # Get the workspace from the created dataset
         workspace = dataset["workspace"]

@@ -12,10 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from typing import TYPE_CHECKING
 import typer
 
 from argilla.cli.rich import get_argilla_themed_panel
 from rich.console import Console
+
+if TYPE_CHECKING:
+    from argilla.client.core import Argilla
+
 
 def echo_in_panel(text, title=None, title_align="center", success=True):
     """Echoes a message in a rich panel with Argilla theme."""
@@ -26,8 +32,9 @@ def echo_in_panel(text, title=None, title_align="center", success=True):
         success=success,
     )
     Console().print(panel)
+    
 
-def init_callback() -> None:
+def init_callback() -> "Argilla":
     """Initialize Argilla client if user is logged in, otherwise exit."""
     from argilla.client.login import ArgillaCredentials
 
@@ -47,9 +54,10 @@ def init_callback() -> None:
         client.me
 
         return client
+    
     except Exception as e:
         echo_in_panel(
-            "The Extralit Server you are logged in is not available or not responding. Please make sure it's running and try again.",
+            f"The Extralit Server you are logged in is not available or not responding. Please make sure it's running and try again.\n{e}",
             title="Server not available",
             title_align="left",
             success=False,

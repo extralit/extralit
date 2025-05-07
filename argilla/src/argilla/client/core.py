@@ -1,4 +1,4 @@
-# Copyright 2024-present, Argilla, Inc.
+# Copyright 2024-present, Extralit Labs, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,7 +31,8 @@ from argilla._helpers._resource_repr import NotebookHTMLReprMixin, ResourceHTMLR
 from argilla._models import DatasetModel, ResourceModel, UserModel, WorkspaceModel
 
 if TYPE_CHECKING:
-    from argilla import Dataset, User, Workspace, Webhook
+    from argilla.client.resources import Datasets, Users, Webhooks, Workspaces
+    from argilla.users import User
 
 __all__ = ["Argilla"]
 

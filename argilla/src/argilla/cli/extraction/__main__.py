@@ -24,12 +24,6 @@ from rich.spinner import Spinner
 from rich.live import Live
 
 
-class DatasetType(str, Enum):
-    """Dataset types in the system."""
-    TEXT_CLASSIFICATION = "text_classification"
-    TOKEN_CLASSIFICATION = "token_classification"
-    TEXT_GENERATION = "text_generation"
-    FEEDBACK = "feedback"
 
 
 # Commands that require specific parameters
@@ -139,11 +133,6 @@ app = typer.Typer(
 @app.command(name="export", help="Export extraction data to S3 storage")
 def export(
     ctx: typer.Context,
-    type_: Optional[DatasetType] = typer.Option(
-        None,
-        "--type",
-        help="The type of dataset to export (text_classification, token_classification, text_generation, feedback).",
-    ),
     output_path: str = typer.Option(
         "exported-data",
         "--output",
@@ -157,7 +146,6 @@ def export(
         workspace = ctx.obj["workspace"]
         
         # Display export information
-        dataset_type = f"({type_.value})" if type_ else "(all types)"
         panel = get_argilla_themed_panel(
             f"Starting export of extraction data for workspace '{workspace['name']}' {dataset_type}",
             title="Export Started",
@@ -175,7 +163,6 @@ def export(
             # Perform the actual export
             client.export_extraction_data(
                 workspace=workspace['name'],
-                dataset_type=type_.value if type_ else None,
                 output_path=output_path
             )
         
@@ -183,7 +170,6 @@ def export(
         panel = get_argilla_themed_panel(
             f"Extraction data successfully exported to {output_path}\n"
             f"• Workspace: {workspace['name']}\n"
-            f"• Dataset type: {type_.value if type_ else 'All'}",
             title="Export Complete",
             title_align="left",
         )

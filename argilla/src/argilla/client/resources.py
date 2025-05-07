@@ -243,30 +243,53 @@ class Datasets(Sequence["Dataset"], ResourceHTMLReprMixin):
         """Get a dataset by id if exists. Otherwise, returns `None`"""
         ...
 
+    @overload
+    def __call__(self, workspace: Union["Workspace", str]) -> List["Dataset"]:
+        """Get all datasets for a given workspace."""
+        ...
+
     def __call__(
-        self, name: str = None, workspace: Optional[Union["Workspace", str]] = None, id: Union[UUID, str] = None
-    ) -> Optional["Dataset"]:
-        if not (name or id):
-            raise ArgillaError("One of 'name' or 'id' must be provided")
-
-        if name and id:
-            warnings.warn("Only one of 'name' or 'id' must be provided. Using 'id'")
-            name = None
-
-        if id is not None:
+        self,
+        name: str = None,
+        workspace: Optional[Union["Workspace", str]] = None,
+        id: Union[UUID, str] = None
+    ) -> Union[Optional["Dataset"], List["Dataset"]]:
+        """
+        Get a dataset by name and workspace, by id, or all datasets for a workspace.
+        """
+        if id is not None and name is None and workspace is None:
             model = _get_model_by_id(self._api, id)
             if model:
-                return self._from_model(model)  # noqa
+                return self._from_model(model)
             warnings.warn(f"Dataset with id {id!r} not found")
-        else:
-            workspace = workspace or self._client.workspaces.default
-            if isinstance(workspace, str):
-                workspace = self._client.workspaces(workspace)
-
-            for dataset in workspace.datasets:
+            return None
+        
+        elif name is not None and id is None:
+            workspace_obj = workspace or self._client.workspaces.default
+            if isinstance(workspace_obj, str):
+                workspace_obj = self._client.workspaces(workspace_obj)
+            for dataset in workspace_obj.datasets:
                 if dataset.name == name:
                     return dataset.get()
-            warnings.warn(f"Dataset with name {name!r} not found in workspace {workspace.name!r}")
+            warnings.warn(f"Dataset with name {name!r} not found in workspace {workspace_obj.name!r}")
+            return None
+        
+        elif name is None and id is None and workspace is not None:
+            workspace_obj = workspace
+            if isinstance(workspace_obj, str):
+                workspace_obj = self._client.workspaces(workspace_obj)
+            return list(workspace_obj.datasets)
+
+        elif name is not None and id is not None:
+            warnings.warn("Only one of 'name' or 'id' must be provided. Using 'id'")
+            model = _get_model_by_id(self._api, id)
+            if model:
+                return self._from_model(model)
+            warnings.warn(f"Dataset with id {id!r} not found")
+            return None
+        
+        else:
+            raise ArgillaError("One of 'name', 'id', or 'workspace' must be provided")
 
     def __iter__(self):
         return self._Iterator(self.list())

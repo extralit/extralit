@@ -36,21 +36,21 @@ def test_schemas_help(runner):
 
 def test_schemas_upload_command_help(runner):
     """Test the help message for the 'upload' subcommand."""
-    result = runner.invoke(app, ["schemas", "--workspace", "default", "upload", "--help"])
+    result = runner.invoke(app, ["schemas", "upload", "--help"])
     assert result.exit_code == 0
     assert "upload" in result.stdout.lower()
 
 
 def test_schemas_list_command_help(runner):
     """Test the help message for the 'list' subcommand."""
-    result = runner.invoke(app, ["schemas", "--workspace", "default", "list", "--help"])
+    result = runner.invoke(app, ["schemas", "list", "--help"])
     assert result.exit_code == 0
     assert "list" in result.stdout.lower()
 
 
 def test_schemas_delete_command_help(runner):
     """Test the help message for the 'delete' subcommand."""
-    result = runner.invoke(app, ["schemas", "--workspace", "default", "delete", "--help"])
+    result = runner.invoke(app, ["schemas", "delete", "--help"])
     assert result.exit_code == 0
     assert "delete" in result.stdout.lower()
 
@@ -58,7 +58,7 @@ def test_schemas_delete_command_help(runner):
 @patch("rich.console.Console.print")
 def test_schemas_list(mock_print, runner):
     """Test the 'list schemas' command functionality."""
-    result = runner.invoke(app, ["schemas", "--workspace", "research", "list"])
+    result = runner.invoke(app, ["schemas", "list", "--workspace", "research",])
 
     assert result.exit_code == 0
     mock_print.assert_called_once()
@@ -70,7 +70,7 @@ def test_schemas_list(mock_print, runner):
 @patch("rich.console.Console.print")
 def test_schemas_list_with_versions(mock_print, runner):
     """Test the 'list schemas' command with versions flag."""
-    result = runner.invoke(app, ["schemas", "--workspace", "research", "list", "--name", "customer-feedback"])
+    result = runner.invoke(app, ["schemas", "list", "--workspace", "research", "--name", "customer-feedback"])
 
     assert result.exit_code == 0
     mock_print.assert_called_once()
@@ -80,7 +80,7 @@ def test_schemas_list_with_versions(mock_print, runner):
 def test_schemas_list_with_csv_export(mock_print, runner):
     """Test the 'list schemas' command with CSV export."""
     with runner.isolated_filesystem():
-        result = runner.invoke(app, ["schemas", "--workspace", "research", "list"])
+        result = runner.invoke(app, ["schemas", "list", "--workspace", "research",])
 
         assert result.exit_code == 0
         mock_print.assert_called_once()
@@ -102,8 +102,7 @@ def test_schemas_upload(mock_upload_schemas, runner):
         # Call the command with the appropriate parameters
         result = runner.invoke(app, [
             "schemas",
-            "--workspace", "research",
-            "upload",
+            "upload", "--workspace", "research",
             "schemas",
             "--overwrite",
             "--exclude", "excluded_schema"
@@ -131,7 +130,7 @@ def test_schemas_upload(mock_upload_schemas, runner):
 def test_schemas_delete(mock_print, runner):
     """Test the 'delete schema' command functionality."""
     # Simulate user confirming the deletion
-    result = runner.invoke(app, ["schemas", "--workspace", "research", "delete", "schema1"], input="y\n")
+    result = runner.invoke(app, ["schemas", "delete", "--workspace", "research", "schema1"], input="y\n")
 
     assert result.exit_code == 0
     mock_print.assert_called_once()
@@ -149,7 +148,7 @@ def test_schemas_delete_nonexistent(mock_print, runner):
     # Make print raise ValueError to simulate schema not found
     mock_print.side_effect = ValueError("Schema not found")
 
-    result = runner.invoke(app, ["schemas", "--workspace", "research", "delete", "nonexistent_schema"])
+    result = runner.invoke(app, ["schemas", "delete", "--workspace", "research", "nonexistent_schema"])
 
     # Should exit with code 1 due to ValueError
     assert result.exit_code == 1

@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum
 from typing import Dict, Optional
 
 import typer
 
-from argilla.client.enums import DatasetType
 
 # Function stub for testing - will be implemented fully in Phase 3
 def get_minio_client():
@@ -25,11 +25,6 @@ def get_minio_client():
 
 def export_data(
     ctx: typer.Context,
-    type_: Optional[DatasetType] = typer.Option(
-        None,
-        "--type",
-        help="The type of datasets to be listed. This option can be used multiple times. By default, all datasets are listed.",
-    ),
 ) -> None:
     """Export data from a dataset.
     

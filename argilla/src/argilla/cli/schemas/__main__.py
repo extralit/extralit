@@ -201,7 +201,7 @@ def list_schemas(
 
     except Exception as e:
         panel = get_argilla_themed_panel(
-            "An unexpected error occurred when listing schemas.",
+            f"An unexpected error occurred when listing schemas. {e}",
             title="List Failed",
             title_align="left",
             success=False,
