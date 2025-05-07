@@ -73,7 +73,7 @@ app = typer.Typer(help="Commands for dataset management", no_args_is_help=True, 
 
 @app.command(name="list", help="List datasets linked to user's workspaces")
 def list_datasets(
-    workspace: str = typer.Option(None, help="Filter datasets by workspace"),
+    workspace: str = typer.Option(..., help="Filter datasets by workspace"),
 ) -> None:
     """List datasets with optional filtering by workspace and type."""
     try:
@@ -81,31 +81,20 @@ def list_datasets(
 
         datasets = client.datasets(workspace=workspace)
 
-        print(datasets)
+        table = Table(title="Datasets", show_lines=True)
+        for column in ("ID", "Name", "Workspace", "Creation Date", "Last Activity Date"):
+            table.add_column(column, justify="center" if column != "Tags" else "left")
 
-        # table = Table(title="Datasets", show_lines=True)
-        # for column in ("ID", "Name", "Workspace", "Type", "Tags", "Creation Date", "Last Update Date"):
-        #     table.add_column(column, justify="center" if column != "Tags" else "left")
+        for dataset in datasets:
+            table.add_row(
+                str(dataset.id),
+                dataset.name,
+                dataset.workspace.name,
+                dataset.inserted_at.isoformat(sep=" "),
+                dataset._model.last_activity_at.isoformat(sep=" "),
+            )
 
-        # for dataset in datasets:
-        #     # Format tags as bullet points
-        #     tags_text = ""
-        #     for i, (tag, description) in enumerate(dataset["tags"].items()):
-        #         tags_text += f"• [bold]{tag}[/bold]: {description}"
-        #         if i < len(dataset["tags"]) - 1:
-        #             tags_text += "\n"
-
-        #     table.add_row(
-        #         dataset["id"],
-        #         dataset["name"],
-        #         dataset["workspace"],
-        #         str(dataset["type"]),
-        #         tags_text,
-        #         dataset["created_at"].isoformat(sep=" "),
-        #         dataset["updated_at"].isoformat(sep=" "),
-        #     )
-
-        # Console().print(table)
+        Console().print(table)
     except Exception as e:
         panel = get_argilla_themed_panel(
             f"An unexpected error occurred when trying to list datasets: {str(e)}",
@@ -127,7 +116,7 @@ def delete_dataset(ctx: typer.Context) -> None:
         client = init_callback()
 
         # Delete the dataset using the client
-        client.delete_dataset(name=dataset["name"], workspace=dataset["workspace"])
+        client.datasets(name=dataset["name"], workspace=dataset["workspace"]).delete()
         panel = get_argilla_themed_panel(
             f"Dataset with name={dataset['name']} and workspace={dataset['workspace']} deleted successfully",
             title="Dataset deleted",
@@ -208,17 +197,14 @@ def push_to_huggingface(
 @app.command(name="create", help="Creates a new dataset")
 def create_dataset(
     name: str = typer.Option(..., prompt=True, help="The name of the dataset to be created"),
-    workspace: Optional[str] = typer.Option(None, help="The workspace where the dataset will be created"),
+    workspace: str = typer.Option(..., help="The workspace where the dataset will be created"),
 ) -> None:
     """Create a new dataset in the system."""
     try:
-        # Initialize the client
         client = init_callback()
 
-        # Create the dataset using the client
         dataset = client.create_dataset(name=name, workspace=workspace)
 
-        # Get the workspace from the created dataset
         workspace = dataset["workspace"]
 
         panel = get_argilla_themed_panel(

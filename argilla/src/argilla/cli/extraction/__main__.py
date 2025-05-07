@@ -147,7 +147,7 @@ def export(
         
         # Display export information
         panel = get_argilla_themed_panel(
-            f"Starting export of extraction data for workspace '{workspace['name']}' {dataset_type}",
+            f"Starting export of extraction data for workspace '{workspace['name']}'",
             title="Export Started",
             title_align="left",
         )
@@ -169,7 +169,7 @@ def export(
         # Show completion message
         panel = get_argilla_themed_panel(
             f"Extraction data successfully exported to {output_path}\n"
-            f"• Workspace: {workspace['name']}\n"
+            f"• Workspace: {workspace['name']}\n",
             title="Export Complete",
             title_align="left",
         )

@@ -88,7 +88,7 @@ class User(Resource):
         """
         model_create = self.api_model()
         model = self._api.create(model_create)
-        # The password is not returned in the response
+
         model.password = model_create.password
         self._model = model
         return self
