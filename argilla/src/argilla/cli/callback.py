@@ -32,7 +32,7 @@ def echo_in_panel(text, title=None, title_align="center", success=True):
         success=success,
     )
     Console().print(panel)
-    
+
 
 def init_callback() -> "Argilla":
     """Initialize Argilla client if user is logged in, otherwise exit."""
@@ -51,8 +51,6 @@ def init_callback() -> "Argilla":
         from argilla.client import Argilla
         client = Argilla.from_credentials()
 
-        client.me
-
         return client
     
     except Exception as e:
@@ -63,6 +61,7 @@ def init_callback() -> "Argilla":
             success=False,
         )
         raise typer.Exit(code=1)
+
 
 def deprecated_database_cmd_callback(ctx: typer.Context) -> None:
     """Display warning for deprecated database commands."""

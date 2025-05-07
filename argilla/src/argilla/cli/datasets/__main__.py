@@ -23,7 +23,7 @@ from rich.console import Console
 from rich.table import Table
 
 if TYPE_CHECKING:
-    from argilla.client.core import Argilla
+    from argilla.datasets._resource import Dataset
 
 
 _COMMANDS_REQUIRING_DATASET = ["delete", "push-to-huggingface"]
@@ -46,7 +46,7 @@ def callback(
         )
 
     try:
-        dataset = client(name=name, workspace=workspace)
+        dataset = client.datasets(name=name, workspace=workspace)
         ctx.obj = dataset
     except ValueError as e:
         panel = get_argilla_themed_panel(
@@ -59,7 +59,7 @@ def callback(
         raise typer.Exit(1)
     except Exception as e:
         panel = get_argilla_themed_panel(
-            "An unexpected error occurred when trying to get the dataset from the Extralit server.",
+            f"An unexpected error occurred when fetching the dataset: {e}",
             title="Unexpected error",
             title_align="left",
             success=False,
@@ -109,23 +109,20 @@ def list_datasets(
 @app.command(name="delete", help="Deletes a dataset")
 def delete_dataset(ctx: typer.Context) -> None:
     """Delete a dataset from the system."""
-    dataset = ctx.obj
+    dataset: "Dataset" = ctx.obj
 
     try:
-        # Initialize the client
-        client = init_callback()
+        dataset.delete()
 
-        # Delete the dataset using the client
-        client.datasets(name=dataset["name"], workspace=dataset["workspace"]).delete()
         panel = get_argilla_themed_panel(
-            f"Dataset with name={dataset['name']} and workspace={dataset['workspace']} deleted successfully",
+            f"Dataset with name={dataset.name} and workspace={dataset.workspace.name} deleted successfully",
             title="Dataset deleted",
             title_align="left",
         )
         Console().print(panel)
-    except RuntimeError:
+    except RuntimeError as re:
         panel = get_argilla_themed_panel(
-            "An unexpected error occurred when trying to delete the dataset",
+            f"An unexpected error occurred when trying to delete the dataset: {re}",
             title="Unexpected error",
             title_align="left",
             success=False,
@@ -134,7 +131,7 @@ def delete_dataset(ctx: typer.Context) -> None:
         raise typer.Exit(code=1)
 
 
-@app.command(name="push-to-huggingface", help="Push a dataset to HuggingFace Hub")
+@app.command(name="push-to-huggingface", help="Push a dataset to HuggingFace Hub", hidden=True)
 def push_to_huggingface(
     ctx: typer.Context,
     repo_id: str = typer.Option(..., help="The HuggingFace Hub repo where the dataset will be pushed to"),
@@ -142,7 +139,7 @@ def push_to_huggingface(
     token: Optional[str] = typer.Option(None, help="The HuggingFace Hub token to be used for pushing the dataset"),
 ) -> None:
     """Push a dataset to the HuggingFace Hub."""
-    dataset = ctx.obj
+    dataset: "Dataset" = ctx.obj
 
     try:
         from rich.live import Live
@@ -150,21 +147,19 @@ def push_to_huggingface(
 
         spinner = Spinner(
             name="dots",
-            text=f"Pushing dataset with name={dataset['name']} and workspace={dataset['workspace']} to the"
+            text=f"Pushing dataset with name={dataset.name} and workspace={dataset.workspace.name} to the"
             " HuggingFace Hub...",
         )
 
         with Live(spinner, refresh_per_second=20):
-            # Initialize the client
             client = init_callback()
 
-            # Push the dataset to HuggingFace Hub
             client.push_dataset_to_huggingface(
-                name=dataset["name"],
+                name=dataset.name,
                 repo_id=repo_id,
                 private=private,
                 token=token,
-                workspace=dataset["workspace"]
+                workspace=dataset.workspace
             )
 
         panel = get_argilla_themed_panel(
@@ -183,9 +178,9 @@ def push_to_huggingface(
         )
         Console().print(panel)
         raise typer.Exit(1)
-    except Exception:
+    except Exception as e:
         panel = get_argilla_themed_panel(
-            "An unexpected error occurred when trying to push the dataset to the HuggingFace Hub",
+            f"An unexpected error occurred when trying to push the dataset to the HuggingFace Hub: {e}",
             title="Unexpected error",
             title_align="left",
             success=False,
@@ -194,18 +189,54 @@ def push_to_huggingface(
         raise typer.Exit(code=1)
 
 
-@app.command(name="create", help="Creates a new dataset")
+@app.command(name="create", help="Creates a new dataset with configurable settings", hidden=True)
 def create_dataset(
     name: str = typer.Option(..., prompt=True, help="The name of the dataset to be created"),
-    workspace: str = typer.Option(..., help="The workspace where the dataset will be created"),
+    workspace: str = typer.Option(..., prompt=True, help="The workspace where the dataset will be created"),
+    guidelines: Optional[str] = typer.Option(None, prompt=True, help="Guidelines for annotators (optional)"),
+    allow_extra_metadata: bool = typer.Option(
+        False, prompt=True, help="Whether to allow extra metadata in records"
+    ),
+    advanced_config: bool = typer.Option(
+        False, prompt=True, help="Configure fields and questions interactively"
+    ),
 ) -> None:
-    """Create a new dataset in the system."""
+    """Create a new dataset with configurable settings in the system."""
     try:
         client = init_callback()
-
-        dataset = client.create_dataset(name=name, workspace=workspace)
-
-        workspace = dataset["workspace"]
+        
+        from argilla.settings import Settings, TextField, TextQuestion
+        from argilla.datasets._resource import Dataset
+        
+        fields = [TextField(name="text", title="Text")]
+        questions = [TextQuestion(name="comment", title="Comment", description="Add your comments here")]
+        
+        if advanced_config:
+            if typer.confirm("Add a text field?", default=True):
+                field_name = typer.prompt("Field name", default="text")
+                field_title = typer.prompt("Field title", default="Text")
+                fields = [TextField(name=field_name, title=field_title)]
+            
+            if typer.confirm("Add a text question?", default=True):
+                question_name = typer.prompt("Question name", default="comment")
+                question_title = typer.prompt("Question title", default="Comment")
+                question_desc = typer.prompt("Question description", default="Add your comments here")
+                questions = [TextQuestion(name=question_name, title=question_title, description=question_desc)]
+        
+        settings = Settings(
+            fields=fields,
+            questions=questions,
+            guidelines=guidelines,
+            allow_extra_metadata=allow_extra_metadata
+        )
+        
+        dataset = Dataset(
+            name=name,
+            workspace=workspace,
+            settings=settings,
+            client=client
+        )
+        dataset.create()
 
         panel = get_argilla_themed_panel(
             f"Dataset with name='{name}' successfully created in workspace='{workspace}'.",
@@ -213,18 +244,18 @@ def create_dataset(
             title_align="left",
         )
         Console().print(panel)
-    except ValueError:
+    except ValueError as ve:
         panel = get_argilla_themed_panel(
-            f"Dataset with name='{name}' already exists in workspace='{workspace}'.",
-            title="Dataset already exists",
+            f"Dataset creation failed: {ve}",
+            title="Dataset creation failed",
             title_align="left",
             success=False,
         )
         Console().print(panel)
         raise typer.Exit(code=1)
-    except RuntimeError:
+    except RuntimeError as re:
         panel = get_argilla_themed_panel(
-            "An unexpected error occurred when trying to create the dataset.",
+            f"An unexpected error occurred when trying to create the dataset: {re}",
             title="Unexpected error",
             title_align="left",
             success=False,
