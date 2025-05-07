@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 import typer
 
 from argilla.cli.rich import get_argilla_themed_panel
@@ -62,6 +62,18 @@ def init_callback() -> "Argilla":
         )
         raise typer.Exit(code=1)
 
+
+def autocomplete_workspace(incomplete: str) -> List[str]:
+    """Autocomplete workspaces based on the partial input."""
+    try:
+        client = init_callback()
+        workspaces = client.workspaces
+        
+        # Filter workspaces that start with the incomplete string
+        return [workspace.name for workspace in workspaces if workspace.name.startswith(incomplete)]
+    except Exception:
+        # If there's any error during autocompletion, just return empty list
+        return []
 
 def deprecated_database_cmd_callback(ctx: typer.Context) -> None:
     """Display warning for deprecated database commands."""

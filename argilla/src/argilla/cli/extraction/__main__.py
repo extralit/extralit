@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 from typing import Optional, Dict, Any
 from enum import Enum
 
@@ -36,7 +37,9 @@ def callback(
     workspace: str = typer.Option(None, help="Name of the workspace to which apply the command."),
     env_file: str = typer.Option(None, help="Path to .env file with environment variables containing S3 credentials."),
 ) -> None:
-    """Callback for extraction commands."""
+    if ctx.resilient_parsing or "--help" in sys.argv or "-h" in sys.argv:
+        return
+    
     init_callback()
 
     if ctx.invoked_subcommand not in _COMMANDS_REQUIRING_WORKSPACE and ctx.invoked_subcommand not in _COMMANDS_REQUIRING_ENVFILE:

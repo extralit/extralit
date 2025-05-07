@@ -268,6 +268,10 @@ class Datasets(Sequence["Dataset"], ResourceHTMLReprMixin):
             workspace_obj = workspace or self._client.workspaces.default
             if isinstance(workspace_obj, str):
                 workspace_obj = self._client.workspaces(workspace_obj)
+
+            if workspace_obj is None:
+                raise ArgillaError("Workspace not found. Please provide a valid workspace name or id.")
+            
             for dataset in workspace_obj.datasets:
                 if dataset.name == name:
                     return dataset.get()

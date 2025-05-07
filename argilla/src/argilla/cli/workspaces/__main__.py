@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 from typing import Optional, Dict, Any
 from datetime import datetime
 
@@ -112,7 +113,9 @@ def callback(
     ctx: typer.Context,
     name: Optional[str] = typer.Option(None, help="Name of the workspace to which apply the command."),
 ) -> None:
-    """Callback for workspace commands."""
+    if ctx.resilient_parsing or "--help" in sys.argv or "-h" in sys.argv:
+        return
+    
     init_callback()
 
     if ctx.invoked_subcommand not in _COMMANDS_REQUIRING_WORKSPACE:

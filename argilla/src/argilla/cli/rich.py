@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from typing import Optional, Union
+import traceback
 
 from rich.console import RenderableType
 from rich.panel import Panel
@@ -24,6 +25,8 @@ def get_argilla_themed_panel(
     title: Optional[Union[str, Text]] = None,
     title_align: str = "center",
     success: bool = True,
+    exception: Optional[Exception] = None,
+    debug: bool = False,
 ) -> Panel:
     """
     Returns a rich panel with Argilla theme.
@@ -33,12 +36,35 @@ def get_argilla_themed_panel(
         title: The title of the panel
         title_align: The alignment of the title
         success: If True, use success style; if False, use error style
+        exception: Optional exception to include in the panel
+        debug: If True and exception is provided, include a minimal stack trace
 
     Returns:
         A rich panel with Argilla theme
     """
+    content = renderable
+    
+    if exception is not None and debug:
+        tb = traceback.extract_tb(exception.__traceback__)
+        # Get just the first and last frames for a minimal trace
+        if len(tb) > 1:
+            minimal_tb = [tb[0], tb[-1]]
+        else:
+            minimal_tb = tb
+            
+        trace_str = "\n\n[bold]Debug trace:[/bold]\n"
+        for frame in minimal_tb:
+            file, line, func, code = frame
+            trace_str += f"File '{file}', line {line}, in {func}\n  {code}\n"
+            
+        if isinstance(content, str):
+            content = f"{content}{trace_str}"
+        else:
+            # For other renderables, we wrap both in a list
+            content = [content, Text.from_markup(trace_str)]
+    
     return Panel(
-        renderable=renderable,
+        renderable=content,
         title=title,
         title_align=title_align,
         border_style="green" if success else "red",

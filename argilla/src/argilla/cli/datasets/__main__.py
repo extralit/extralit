@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from enum import Enum
 
@@ -26,54 +27,13 @@ if TYPE_CHECKING:
     from argilla.datasets._resource import Dataset
 
 
-_COMMANDS_REQUIRING_DATASET = ["delete", "push-to-huggingface"]
-
-
-def callback(
-    ctx: typer.Context,
-    name: Optional[str] = typer.Option(None, help="The name of the dataset to which apply the command"),
-    workspace: Optional[str] = typer.Option(None, help="The name of the workspace where the dataset belongs"),
-) -> None:
-    """Callback for dataset commands."""
-    client = init_callback()
-
-    if ctx.invoked_subcommand not in _COMMANDS_REQUIRING_DATASET:
-        return
-
-    if name is None:
-        raise typer.BadParameter(
-            f"The command requires a dataset name provided using '--name' option before the {typer.style(ctx.invoked_subcommand, bold=True)} keyword"
-        )
-
-    try:
-        dataset = client.datasets(name=name, workspace=workspace)
-        ctx.obj = dataset
-    except ValueError as e:
-        panel = get_argilla_themed_panel(
-            str(e),
-            title="Dataset not found",
-            title_align="left",
-            success=False,
-        )
-        Console().print(panel)
-        raise typer.Exit(1)
-    except Exception as e:
-        panel = get_argilla_themed_panel(
-            f"An unexpected error occurred when fetching the dataset: {e}",
-            title="Unexpected error",
-            title_align="left",
-            success=False,
-        )
-        Console().print(panel)
-        raise typer.Exit(code=1)
-
-
-app = typer.Typer(help="Commands for dataset management", no_args_is_help=True, callback=callback)
+app = typer.Typer(help="Commands for dataset management", no_args_is_help=True)
 
 
 @app.command(name="list", help="List datasets linked to user's workspaces")
 def list_datasets(
     workspace: str = typer.Option(..., help="Filter datasets by workspace"),
+    debug: bool = typer.Option(False, "--debug", "-d", help="Show minimal stack trace for debugging"),
 ) -> None:
     """List datasets with optional filtering by workspace and type."""
     try:
@@ -97,21 +57,28 @@ def list_datasets(
         Console().print(table)
     except Exception as e:
         panel = get_argilla_themed_panel(
-            f"An unexpected error occurred when trying to list datasets: {str(e)}",
+            f"An unexpected error occurred when trying to list datasets",
             title="Unexpected error",
             title_align="left",
             success=False,
+            exception=e,
+            debug=debug,
         )
         Console().print(panel)
         raise typer.Exit(code=1)
 
 
 @app.command(name="delete", help="Deletes a dataset")
-def delete_dataset(ctx: typer.Context) -> None:
+def delete_dataset(
+    name: str = typer.Option(..., "--name", "-n", help="The name of the dataset to delete"),
+    workspace: Optional[str] = typer.Option(None, help="The name of the workspace where the dataset belongs"),
+    debug: bool = typer.Option(False, "--debug", "-d", help="Show minimal stack trace for debugging"),
+) -> None:
     """Delete a dataset from the system."""
-    dataset: "Dataset" = ctx.obj
-
     try:
+        client = init_callback()
+        
+        dataset = client.datasets(name=name, workspace=workspace)
         dataset.delete()
 
         panel = get_argilla_themed_panel(
@@ -122,10 +89,23 @@ def delete_dataset(ctx: typer.Context) -> None:
         Console().print(panel)
     except RuntimeError as re:
         panel = get_argilla_themed_panel(
-            f"An unexpected error occurred when trying to delete the dataset: {re}",
+            f"An unexpected error occurred when trying to delete the dataset",
             title="Unexpected error",
             title_align="left",
             success=False,
+            exception=re,
+            debug=debug,
+        )
+        Console().print(panel)
+        raise typer.Exit(code=1)
+    except Exception as e:
+        panel = get_argilla_themed_panel(
+            f"An unexpected error occurred when fetching the dataset",
+            title="Unexpected error",
+            title_align="left",
+            success=False,
+            exception=e,
+            debug=debug,
         )
         Console().print(panel)
         raise typer.Exit(code=1)
@@ -133,15 +113,42 @@ def delete_dataset(ctx: typer.Context) -> None:
 
 @app.command(name="push-to-huggingface", help="Push a dataset to HuggingFace Hub", hidden=True)
 def push_to_huggingface(
-    ctx: typer.Context,
+    name: str = typer.Argument(..., help="The name of the dataset to push"),
     repo_id: str = typer.Option(..., help="The HuggingFace Hub repo where the dataset will be pushed to"),
+    workspace: Optional[str] = typer.Option(None, help="The name of the workspace where the dataset belongs"),
     private: bool = typer.Option(False, help="Whether the dataset should be private or not"),
     token: Optional[str] = typer.Option(None, help="The HuggingFace Hub token to be used for pushing the dataset"),
+    debug: bool = typer.Option(False, "--debug", "-d", help="Show minimal stack trace for debugging"),
 ) -> None:
     """Push a dataset to the HuggingFace Hub."""
-    dataset: "Dataset" = ctx.obj
-
     try:
+        client = init_callback()
+        
+        try:
+            dataset = client.datasets(name=name, workspace=workspace)
+        except ValueError as e:
+            panel = get_argilla_themed_panel(
+                str(e),
+                title="Dataset not found",
+                title_align="left",
+                success=False,
+                exception=e,
+                debug=debug,
+            )
+            Console().print(panel)
+            raise typer.Exit(1)
+        except Exception as e:
+            panel = get_argilla_themed_panel(
+                f"An unexpected error occurred when fetching the dataset",
+                title="Unexpected error",
+                title_align="left",
+                success=False,
+                exception=e,
+                debug=debug,
+            )
+            Console().print(panel)
+            raise typer.Exit(code=1)
+            
         from rich.live import Live
         from rich.spinner import Spinner
 
@@ -152,8 +159,6 @@ def push_to_huggingface(
         )
 
         with Live(spinner, refresh_per_second=20):
-            client = init_callback()
-
             client.push_dataset_to_huggingface(
                 name=dataset.name,
                 repo_id=repo_id,
@@ -168,22 +173,26 @@ def push_to_huggingface(
             title_align="left",
         )
         Console().print(panel)
-    except ValueError:
+    except ValueError as ve:
         panel = get_argilla_themed_panel(
             "The dataset has no records to push to the HuggingFace Hub. Make sure to add records before"
             " pushing it.",
             title="No records to push",
             title_align="left",
             success=False,
+            exception=ve,
+            debug=debug,
         )
         Console().print(panel)
         raise typer.Exit(1)
     except Exception as e:
         panel = get_argilla_themed_panel(
-            f"An unexpected error occurred when trying to push the dataset to the HuggingFace Hub: {e}",
+            f"An unexpected error occurred when trying to push the dataset to the HuggingFace Hub",
             title="Unexpected error",
             title_align="left",
             success=False,
+            exception=e,
+            debug=debug,
         )
         Console().print(panel)
         raise typer.Exit(code=1)
@@ -192,7 +201,11 @@ def push_to_huggingface(
 @app.command(name="create", help="Creates a new dataset with configurable settings", hidden=True)
 def create_dataset(
     name: str = typer.Option(..., prompt=True, help="The name of the dataset to be created"),
-    workspace: str = typer.Option(..., prompt=True, help="The workspace where the dataset will be created"),
+    workspace: str = typer.Option(
+        ..., 
+        prompt=True, 
+        help="The workspace where the dataset will be created", 
+    ),
     guidelines: Optional[str] = typer.Option(None, prompt=True, help="Guidelines for annotators (optional)"),
     allow_extra_metadata: bool = typer.Option(
         False, prompt=True, help="Whether to allow extra metadata in records"
@@ -200,6 +213,7 @@ def create_dataset(
     advanced_config: bool = typer.Option(
         False, prompt=True, help="Configure fields and questions interactively"
     ),
+    debug: bool = typer.Option(False, "--debug", "-d", help="Show minimal stack trace for debugging"),
 ) -> None:
     """Create a new dataset with configurable settings in the system."""
     try:
@@ -246,19 +260,34 @@ def create_dataset(
         Console().print(panel)
     except ValueError as ve:
         panel = get_argilla_themed_panel(
-            f"Dataset creation failed: {ve}",
+            f"Dataset creation failed",
             title="Dataset creation failed",
             title_align="left",
             success=False,
+            exception=ve,
+            debug=debug,
         )
         Console().print(panel)
         raise typer.Exit(code=1)
     except RuntimeError as re:
         panel = get_argilla_themed_panel(
-            f"An unexpected error occurred when trying to create the dataset: {re}",
+            f"An unexpected error occurred when trying to create the dataset",
             title="Unexpected error",
             title_align="left",
             success=False,
+            exception=re,
+            debug=debug,
+        )
+        Console().print(panel)
+        raise typer.Exit(code=1)
+    except Exception as e:
+        panel = get_argilla_themed_panel(
+            f"An unexpected error occurred when trying to create the dataset",
+            title="Unexpected error",
+            title_align="left",
+            success=False,
+            exception=e,
+            debug=debug,
         )
         Console().print(panel)
         raise typer.Exit(code=1)
