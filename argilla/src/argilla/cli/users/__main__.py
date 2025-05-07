@@ -1,4 +1,4 @@
-# Copyright 2024-present, Argilla, Inc.
+# Copyright 2024-present, Extralit Labs, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,18 +13,12 @@
 # limitations under the License.
 
 from typing import Optional
-from enum import Enum
 
 import typer
 
 from argilla.cli.callback import init_callback
-
-
-class UserRole(str, Enum):
-    """User roles in the system."""
-    ADMIN = "admin"
-    OWNER = "owner"
-    ANNOTATOR = "annotator"
+from argilla.cli.rich import print_rich_table
+from argilla._models._user import Role
 
 
 def callback() -> None:
@@ -43,7 +37,7 @@ def create_user(
     ),
     first_name: Optional[str] = typer.Option(None, help="The first name of the user to be created"),
     last_name: Optional[str] = typer.Option(None, help="The last name of the user to be created"),
-    role: UserRole = typer.Option(UserRole.ANNOTATOR, help="The role of the user to be created"),
+    role: Role = typer.Option(Role.annotator, help="The role of the user to be created"),
     workspaces: Optional[list[str]] = typer.Option(
         None,
         "--workspace",
@@ -51,37 +45,29 @@ def create_user(
     ),
 ) -> None:
     """Creates a new user in the system."""
-    from rich.markdown import Markdown
     from argilla.cli.rich import get_argilla_themed_panel
+    from argilla.users._resource import User
     from rich.console import Console
 
     try:
-        # Initialize the client
         client = init_callback()
 
-        # Create the user via the API
-        user = client.create_user(
+        user = User(
             username=username,
             password=password,
             first_name=first_name,
             last_name=last_name,
             role=role,
-            workspaces=workspaces
+            workspaces=workspaces,
+            client=client,
         )
 
-        panel = get_argilla_themed_panel(
-            Markdown(
-                f"- **Username**: {user['username']}\n"
-                f"- **Role**: {user['role']}\n"
-                f"- **First name**: {user['first_name']}\n"
-                f"- **Last name**: {user['last_name']}\n"
-                f"- **API Key**: {user['api_key']}\n"
-                f"- **Workspaces**: {', '.join(user['workspaces'])}"
-            ),
+        user.create()
+
+        print_rich_table(
+            [user],
             title="User created",
-            title_align="left",
         )
-        Console().print(panel)
     except KeyError:
         panel = get_argilla_themed_panel(
             f"User with name={username} already exists.",
@@ -93,10 +79,7 @@ def create_user(
         raise typer.Exit(code=1)
     except ValueError as e:
         panel = get_argilla_themed_panel(
-            f"Provided parameters are not valid:\n\n{e}",
-            title="Invalid parameters",
-            title_align="left",
-            success=False
+            f"Provided parameters are not valid:\n\n{e}", title="Invalid parameters", title_align="left", success=False
         )
         Console().print(panel)
         raise typer.Exit(code=1)
@@ -114,58 +97,45 @@ def create_user(
 @app.command(name="list", help="List users")
 def list_users(
     workspace: Optional[str] = typer.Option(None, help="Filter users by workspace"),
-    role: Optional[str] = typer.Option(None, help="Filter users by role"),
+    role: Optional[str] = typer.Option(
+        None, help="Filter users by role", autocompletion=lambda: [role.value for role in Role]
+    ),
 ) -> None:
     """List all users in the system with optional filtering."""
     from rich.console import Console
-    from rich.table import Table
 
     from argilla.cli.rich import get_argilla_themed_panel
 
     try:
-        # Initialize the client
         client = init_callback()
 
-        # Fetch users from the server with optional filtering
-        filtered_users = client.list_users(workspace=workspace, role=role)
+        # Get all users or filter by workspace
+        users = []
+        if workspace:
+            # Get the workspace object by name
+            workspace_obj = client.workspaces(name=workspace)
+            if workspace_obj is None:
+                panel = get_argilla_themed_panel(
+                    f"Workspace with name={workspace} doesn't exist.",
+                    title="Workspace not found",
+                    title_align="left",
+                    success=False,
+                )
+                Console().print(panel)
+                raise typer.Exit(code=1)
 
-        # Create a table to display users
-        table = Table(show_header=True, header_style="bold blue")
-        table.add_column("ID")
-        table.add_column("Username")
-        table.add_column("Role")
-        table.add_column("Full Name")
-        table.add_column("Workspaces")
-
-        for user in filtered_users:
-            full_name = f"{user['first_name']} {user['last_name']}".strip()
-            workspaces = ", ".join(user["workspaces"])
-            table.add_row(
-                user["id"],
-                user["username"],
-                user["role"],
-                full_name,
-                workspaces
-            )
-
-        console = Console()
-
-        if not filtered_users:
-            message = "No users found"
-            if workspace:
-                message += f" in workspace '{workspace}'"
-            if role:
-                message += f" with role '{role}'"
-
-            panel = get_argilla_themed_panel(
-                message,
-                title="Users",
-                title_align="left",
-            )
-            console.print(panel)
+            users = workspace_obj.users
         else:
-            console.print(table)
+            users = client.users.list()
 
+        # Filter by role if specified
+        if role:
+            users = [user for user in users if user.role == role]
+
+        print_rich_table(
+            users,
+            title="Users",
+        )
     except RuntimeError:
         panel = get_argilla_themed_panel(
             "An unexpected error occurred when trying to list users.",
@@ -189,20 +159,15 @@ def delete_user(
         # Initialize the client
         client = init_callback()
 
-        # Delete the user via the API
-        client.delete_user(username=username)
+        user = client.users(username=username)
+        user.delete()
         panel = get_argilla_themed_panel(
-            f"User with username={username} has been removed.",
-            title="User removed",
-            title_align="left"
+            f"User with username={username} has been removed.", title="User removed", title_align="left"
         )
         Console().print(panel)
     except ValueError:
         panel = get_argilla_themed_panel(
-            f"User with username={username} doesn't exist.",
-            title="User not found",
-            title_align="left",
-            success=False
+            f"User with username={username} doesn't exist.", title="User not found", title_align="left", success=False
         )
         Console().print(panel)
         raise typer.Exit(code=1)

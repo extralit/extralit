@@ -1,4 +1,4 @@
-# Copyright 2024-present, Argilla, Inc.
+# Copyright 2024-present, Extralit Labs, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-from typing import Optional, Dict, Any, List, TYPE_CHECKING
-from enum import Enum
+from typing import Optional, TYPE_CHECKING
 
 import typer
 
 from argilla.cli.callback import init_callback
 from argilla.cli.rich import get_argilla_themed_panel
+from argilla.cli.rich import print_rich_table
 from rich.console import Console
-from rich.table import Table
 
 if TYPE_CHECKING:
-    from argilla.datasets._resource import Dataset
+    pass
 
 
 app = typer.Typer(help="Commands for dataset management", no_args_is_help=True)
@@ -41,23 +39,10 @@ def list_datasets(
 
         datasets = client.datasets(workspace=workspace)
 
-        table = Table(title="Datasets", show_lines=True)
-        for column in ("ID", "Name", "Workspace", "Creation Date", "Last Activity Date"):
-            table.add_column(column, justify="center" if column != "Tags" else "left")
-
-        for dataset in datasets:
-            table.add_row(
-                str(dataset.id),
-                dataset.name,
-                dataset.workspace.name,
-                dataset.inserted_at.isoformat(sep=" "),
-                dataset._model.last_activity_at.isoformat(sep=" "),
-            )
-
-        Console().print(table)
+        print_rich_table(resources=datasets, title="Datasets")
     except Exception as e:
         panel = get_argilla_themed_panel(
-            f"An unexpected error occurred when trying to list datasets",
+            "An unexpected error occurred when trying to list datasets",
             title="Unexpected error",
             title_align="left",
             success=False,
@@ -77,7 +62,7 @@ def delete_dataset(
     """Delete a dataset from the system."""
     try:
         client = init_callback()
-        
+
         dataset = client.datasets(name=name, workspace=workspace)
         dataset.delete()
 
@@ -89,7 +74,7 @@ def delete_dataset(
         Console().print(panel)
     except RuntimeError as re:
         panel = get_argilla_themed_panel(
-            f"An unexpected error occurred when trying to delete the dataset",
+            "An unexpected error occurred when trying to delete the dataset",
             title="Unexpected error",
             title_align="left",
             success=False,
@@ -100,7 +85,7 @@ def delete_dataset(
         raise typer.Exit(code=1)
     except Exception as e:
         panel = get_argilla_themed_panel(
-            f"An unexpected error occurred when fetching the dataset",
+            "An unexpected error occurred when fetching the dataset",
             title="Unexpected error",
             title_align="left",
             success=False,
@@ -123,7 +108,7 @@ def push_to_huggingface(
     """Push a dataset to the HuggingFace Hub."""
     try:
         client = init_callback()
-        
+
         try:
             dataset = client.datasets(name=name, workspace=workspace)
         except ValueError as e:
@@ -139,7 +124,7 @@ def push_to_huggingface(
             raise typer.Exit(1)
         except Exception as e:
             panel = get_argilla_themed_panel(
-                f"An unexpected error occurred when fetching the dataset",
+                "An unexpected error occurred when fetching the dataset",
                 title="Unexpected error",
                 title_align="left",
                 success=False,
@@ -148,7 +133,7 @@ def push_to_huggingface(
             )
             Console().print(panel)
             raise typer.Exit(code=1)
-            
+
         from rich.live import Live
         from rich.spinner import Spinner
 
@@ -160,11 +145,7 @@ def push_to_huggingface(
 
         with Live(spinner, refresh_per_second=20):
             client.push_dataset_to_huggingface(
-                name=dataset.name,
-                repo_id=repo_id,
-                private=private,
-                token=token,
-                workspace=dataset.workspace
+                name=dataset.name, repo_id=repo_id, private=private, token=token, workspace=dataset.workspace
             )
 
         panel = get_argilla_themed_panel(
@@ -175,8 +156,7 @@ def push_to_huggingface(
         Console().print(panel)
     except ValueError as ve:
         panel = get_argilla_themed_panel(
-            "The dataset has no records to push to the HuggingFace Hub. Make sure to add records before"
-            " pushing it.",
+            "The dataset has no records to push to the HuggingFace Hub. Make sure to add records before" " pushing it.",
             title="No records to push",
             title_align="left",
             success=False,
@@ -187,7 +167,7 @@ def push_to_huggingface(
         raise typer.Exit(1)
     except Exception as e:
         panel = get_argilla_themed_panel(
-            f"An unexpected error occurred when trying to push the dataset to the HuggingFace Hub",
+            "An unexpected error occurred when trying to push the dataset to the HuggingFace Hub",
             title="Unexpected error",
             title_align="left",
             success=False,
@@ -202,54 +182,42 @@ def push_to_huggingface(
 def create_dataset(
     name: str = typer.Option(..., prompt=True, help="The name of the dataset to be created"),
     workspace: str = typer.Option(
-        ..., 
-        prompt=True, 
-        help="The workspace where the dataset will be created", 
+        ...,
+        prompt=True,
+        help="The workspace where the dataset will be created",
     ),
     guidelines: Optional[str] = typer.Option(None, prompt=True, help="Guidelines for annotators (optional)"),
-    allow_extra_metadata: bool = typer.Option(
-        False, prompt=True, help="Whether to allow extra metadata in records"
-    ),
-    advanced_config: bool = typer.Option(
-        False, prompt=True, help="Configure fields and questions interactively"
-    ),
+    allow_extra_metadata: bool = typer.Option(False, prompt=True, help="Whether to allow extra metadata in records"),
+    advanced_config: bool = typer.Option(False, prompt=True, help="Configure fields and questions interactively"),
     debug: bool = typer.Option(False, "--debug", "-d", help="Show minimal stack trace for debugging"),
 ) -> None:
     """Create a new dataset with configurable settings in the system."""
     try:
         client = init_callback()
-        
+
         from argilla.settings import Settings, TextField, TextQuestion
         from argilla.datasets._resource import Dataset
-        
+
         fields = [TextField(name="text", title="Text")]
         questions = [TextQuestion(name="comment", title="Comment", description="Add your comments here")]
-        
+
         if advanced_config:
             if typer.confirm("Add a text field?", default=True):
                 field_name = typer.prompt("Field name", default="text")
                 field_title = typer.prompt("Field title", default="Text")
                 fields = [TextField(name=field_name, title=field_title)]
-            
+
             if typer.confirm("Add a text question?", default=True):
                 question_name = typer.prompt("Question name", default="comment")
                 question_title = typer.prompt("Question title", default="Comment")
                 question_desc = typer.prompt("Question description", default="Add your comments here")
                 questions = [TextQuestion(name=question_name, title=question_title, description=question_desc)]
-        
+
         settings = Settings(
-            fields=fields,
-            questions=questions,
-            guidelines=guidelines,
-            allow_extra_metadata=allow_extra_metadata
+            fields=fields, questions=questions, guidelines=guidelines, allow_extra_metadata=allow_extra_metadata
         )
-        
-        dataset = Dataset(
-            name=name,
-            workspace=workspace,
-            settings=settings,
-            client=client
-        )
+
+        dataset = Dataset(name=name, workspace=workspace, settings=settings, client=client)
         dataset.create()
 
         panel = get_argilla_themed_panel(
@@ -260,7 +228,7 @@ def create_dataset(
         Console().print(panel)
     except ValueError as ve:
         panel = get_argilla_themed_panel(
-            f"Dataset creation failed",
+            "Dataset creation failed",
             title="Dataset creation failed",
             title_align="left",
             success=False,
@@ -271,7 +239,7 @@ def create_dataset(
         raise typer.Exit(code=1)
     except RuntimeError as re:
         panel = get_argilla_themed_panel(
-            f"An unexpected error occurred when trying to create the dataset",
+            "An unexpected error occurred when trying to create the dataset",
             title="Unexpected error",
             title_align="left",
             success=False,
@@ -282,7 +250,7 @@ def create_dataset(
         raise typer.Exit(code=1)
     except Exception as e:
         panel = get_argilla_themed_panel(
-            f"An unexpected error occurred when trying to create the dataset",
+            "An unexpected error occurred when trying to create the dataset",
             title="Unexpected error",
             title_align="left",
             success=False,

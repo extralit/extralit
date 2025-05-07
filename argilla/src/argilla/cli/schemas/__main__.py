@@ -1,4 +1,4 @@
-# Copyright 2024-present, Argilla, Inc.
+# Copyright 2024-present, Extralit Labs, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
 
 from typing import Optional, Dict, Any, List
 from pathlib import Path
-import os
-import json
 
 import typer
 
@@ -31,12 +29,7 @@ _COMMANDS_REQUIRING_WORKSPACE = ["upload", "list", "delete", "download"]
 
 def callback(
     ctx: typer.Context,
-    workspace: str = typer.Option(
-        None,
-        "--workspace",
-        "-w",
-        help="Name of the workspace to which apply the command."
-    ),
+    workspace: str = typer.Option(None, "--workspace", "-w", help="Name of the workspace to which apply the command."),
 ) -> None:
     """Callback for schema commands."""
     init_callback()
@@ -54,8 +47,7 @@ def callback(
         client = init_callback()
 
         # Validate the workspace
-        from argilla.cli.workspaces.__main__ import get_workspace
-        workspace_data = get_workspace(workspace)
+        workspace_data = client.workspaces(workspace)
 
         # Store the client and workspace in the context
         ctx.obj = {
@@ -63,7 +55,7 @@ def callback(
             "workspace": workspace_data,
         }
 
-    except ValueError as e:
+    except ValueError:
         panel = get_argilla_themed_panel(
             f"Workspace with name={workspace} does not exist.",
             title="Workspace not found",
@@ -73,7 +65,7 @@ def callback(
         Console().print(panel)
         raise typer.Exit(code=1)
 
-    except Exception as e:
+    except Exception:
         panel = get_argilla_themed_panel(
             "An unexpected error occurred when trying to get the workspace.",
             title="Unexpected error",
@@ -97,7 +89,7 @@ def get_mock_schemas() -> List[Dict[str, Any]]:
             "description": "Schema for customer feedback analysis",
             "version": "1.0.0",
             "created_at": "2025-04-10 15:30:22",
-            "updated_at": "2025-04-10 15:30:22"
+            "updated_at": "2025-04-10 15:30:22",
         },
         {
             "id": "schema2",
@@ -105,7 +97,7 @@ def get_mock_schemas() -> List[Dict[str, Any]]:
             "description": "Schema for product review analysis",
             "version": "2.1.0",
             "created_at": "2025-04-12 09:45:10",
-            "updated_at": "2025-04-13 14:20:15"
+            "updated_at": "2025-04-13 14:20:15",
         },
         {
             "id": "schema3",
@@ -113,8 +105,8 @@ def get_mock_schemas() -> List[Dict[str, Any]]:
             "description": "Schema for support ticket classification",
             "version": "1.2.3",
             "created_at": "2025-04-14 08:12:55",
-            "updated_at": "2025-04-14 08:12:55"
-        }
+            "updated_at": "2025-04-14 08:12:55",
+        },
     ]
 
 
@@ -256,7 +248,7 @@ def delete_schema(
         )
         Console().print(panel)
 
-    except Exception as e:
+    except Exception:
         panel = get_argilla_themed_panel(
             "An unexpected error occurred when deleting the schema.",
             title="Delete Failed",
