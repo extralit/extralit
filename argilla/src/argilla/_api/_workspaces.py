@@ -277,6 +277,8 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             FileNotFoundError: If the local file does not exist.
             PermissionError: If the local file cannot be read.
         """
+        from argilla._models._files import ObjectMetadata
+
         if not workspace_name:
             logger.error("Workspace name cannot be empty")
             raise ValueError("Workspace name cannot be empty")
