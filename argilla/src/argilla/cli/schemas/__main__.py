@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Dict, Any, List
+from typing import Optional, List
 from pathlib import Path
 
 import typer
@@ -77,37 +77,6 @@ def callback(
 
 
 app = typer.Typer(help="Commands for schemas management", no_args_is_help=True, callback=callback)
-
-
-# Mock schemas for demonstration
-def get_mock_schemas() -> List[Dict[str, Any]]:
-    """Get mock schemas for development."""
-    return [
-        {
-            "id": "schema1",
-            "name": "customer-feedback",
-            "description": "Schema for customer feedback analysis",
-            "version": "1.0.0",
-            "created_at": "2025-04-10 15:30:22",
-            "updated_at": "2025-04-10 15:30:22",
-        },
-        {
-            "id": "schema2",
-            "name": "product-review",
-            "description": "Schema for product review analysis",
-            "version": "2.1.0",
-            "created_at": "2025-04-12 09:45:10",
-            "updated_at": "2025-04-13 14:20:15",
-        },
-        {
-            "id": "schema3",
-            "name": "support-ticket",
-            "description": "Schema for support ticket classification",
-            "version": "1.2.3",
-            "created_at": "2025-04-14 08:12:55",
-            "updated_at": "2025-04-14 08:12:55",
-        },
-    ]
 
 
 @app.command(name="upload", help="Upload or update schemas from files in a specified directory")

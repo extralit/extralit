@@ -103,17 +103,36 @@ def print_rich_table(
                 "ID": lambda r: str(r.id),
                 "Name": lambda r: r.name,
                 "Workspace": lambda r: r.workspace.name,
-                "Creation Date": lambda r: r.inserted_at.isoformat(sep=" "),
-                "Last Activity Date": lambda r: r._model.last_activity_at.isoformat(sep=" "),
+                "Creation Date": lambda r: r.inserted_at.isoformat(sep=" ") if r.inserted_at else "",
+                "Last Activity Date": lambda r: r._model.last_activity_at.isoformat(sep=" ")
+                if r._model.last_activity_at
+                else "",
+            },
+            "styles": {
+                "ID": "cyan",
+                "Name": "green",
+                "Workspace": "yellow",
+                "Creation Date": "magenta",
+                "Last Activity Date": "blue",
             },
         },
         "User": {
-            "columns": ["ID", "Username", "Role", "Creation Date"],
+            "columns": ["ID", "Username", "First Name", "Last Name", "Role", "Creation Date"],
             "getters": {
                 "ID": lambda r: str(r.id),
                 "Username": lambda r: r.username,
+                "First Name": lambda r: r.first_name,
+                "Last Name": lambda r: r.last_name,
                 "Role": lambda r: r.role,
-                "Creation Date": lambda r: r.inserted_at.isoformat(sep=" "),
+                "Creation Date": lambda r: r.inserted_at.isoformat(sep=" ") if r.inserted_at else "",
+            },
+            "styles": {
+                "ID": "cyan",
+                "Username": "green",
+                "First Name": "yellow",
+                "Last Name": "yellow",
+                "Role": "magenta",
+                "Creation Date": "blue",
             },
         },
         "Workspace": {
@@ -121,8 +140,69 @@ def print_rich_table(
             "getters": {
                 "ID": lambda r: str(r.id),
                 "Name": lambda r: r.name,
-                "Creation Date": lambda r: r.inserted_at.isoformat(sep=" "),
-                "Last Update Date": lambda r: r.updated_at.isoformat(sep=" "),
+                "Creation Date": lambda r: r.inserted_at.isoformat(sep=" ") if r.inserted_at else "",
+                "Last Update Date": lambda r: r.updated_at.isoformat(sep=" ") if r.updated_at else "",
+            },
+            "styles": {
+                "ID": "cyan",
+                "Name": "green",
+                "Creation Date": "magenta",
+                "Last Update Date": "blue",
+            },
+        },
+        "Schema": {
+            "columns": ["ID", "Name", "Description", "Version", "Created", "Updated"],
+            "getters": {
+                "ID": lambda r: str(r.id),
+                "Name": lambda r: r.name,
+                "Description": lambda r: r.description,
+                "Version": lambda r: r.version,
+                "Created": lambda r: r.created_at.isoformat(sep=" ") if r.created_at else "",
+                "Updated": lambda r: r.updated_at.isoformat(sep=" ") if r.updated_at else "",
+            },
+            "styles": {
+                "ID": "cyan",
+                "Name": "green",
+                "Description": "yellow",
+                "Version": "magenta",
+                "Created": "blue",
+                "Updated": "blue",
+            },
+        },
+        "ObjectMetadata": {
+            "columns": ["Object Name", "Size", "Last Modified", "Version ID", "Content Type"],
+            "getters": {
+                "Object Name": lambda r: r.object_name,
+                "Size": lambda r: r.size,
+                "Last Modified": lambda r: r.last_modified.isoformat() if r.last_modified else "",
+                "Version ID": lambda r: r.version_id,
+                "Content Type": lambda r: r.content_type,
+            },
+            "styles": {
+                "Object Name": "cyan",
+                "Size": "green",
+                "Last Modified": "yellow",
+                "Version ID": "magenta",
+                "Content Type": "blue",
+            },
+        },
+        "Document": {
+            "columns": ["ID", "URL", "PMID", "DOI", "Created", "Updated"],
+            "getters": {
+                "ID": lambda r: str(r.id),
+                "URL": lambda r: r.url,
+                "PMID": lambda r: r.pmid,
+                "DOI": lambda r: r.doi,
+                "Created": lambda r: r.inserted_at.isoformat(sep=" ") if r.inserted_at else "",
+                "Updated": lambda r: r.updated_at.isoformat(sep=" ") if r.updated_at else "",
+            },
+            "styles": {
+                "ID": "cyan",
+                "URL": "green",
+                "PMID": "yellow",
+                "DOI": "magenta",
+                "Created": "blue",
+                "Updated": "blue",
             },
         },
     }
@@ -130,9 +210,14 @@ def print_rich_table(
     config = column_configs.get(resource_type, {})
     display_columns = columns or config.get("columns", [])
     getters = config.get("getters", {})
+    styles = config.get("styles", {})
 
     for column in display_columns:
-        table.add_column(column, justify="center" if column != "Name" else "left")
+        table.add_column(
+            column,
+            justify="center" if column != "Name" else "left",
+            style=styles.get(column, "white"),
+        )
 
     for resource in resources:
         row_values = []
@@ -142,12 +227,12 @@ def print_rich_table(
                 try:
                     value = getter(resource)
                 except (AttributeError, KeyError):
-                    value = "N/A"
+                    value = ""
             else:
                 try:
-                    value = getattr(resource, column.lower().replace(" ", "_"), "N/A")
+                    value = getattr(resource, column.lower().replace(" ", "_"), "")
                 except AttributeError:
-                    value = "N/A"
+                    value = ""
             row_values.append(str(value))
 
         table.add_row(*row_values)

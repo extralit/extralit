@@ -1,32 +1,38 @@
-"""List files in a workspace."""
-
-import os
-import sys
-from typing import Optional
+# Copyright 2024-present, Extralit Labs, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import typer
-from rich.console import Console
-from rich.table import Table
 
 from argilla.client import Argilla
-from argilla.cli.rich import get_argilla_themed_panel
+from argilla.cli.rich import get_argilla_themed_panel, print_rich_table
 
 
 def list_files(
     workspace: str = typer.Option(..., "--workspace", "-w", help="Workspace name"),
     path: str = typer.Option("", "--path", "-p", help="Path prefix to filter files"),
     recursive: bool = typer.Option(True, "--recursive/--no-recursive", help="List files recursively"),
-    include_version: bool = typer.Option(True, "--include-version/--no-include-version", help="Include version information"),
+    include_version: bool = typer.Option(False, "--versions/--no-versions", help="Include version information"),
 ) -> None:
-    """List files in a workspace."""
+    from rich.console import Console
+
     console = Console()
 
     try:
-        # Get the client
         client = Argilla.from_credentials()
 
-        # Get the workspace
         workspace_obj = client.workspaces(name=workspace)
+
         if not workspace_obj:
             panel = get_argilla_themed_panel(
                 f"Workspace '{workspace}' not found.",
@@ -37,8 +43,9 @@ def list_files(
             console.print(panel)
             raise typer.Exit(code=1)
 
-        # List files
         files = workspace_obj.list_files(path, recursive=recursive, include_version=include_version)
+
+        files.objects = [obj for obj in files.objects if obj.etag is not None]
 
         if not files.objects:
             panel = get_argilla_themed_panel(
@@ -50,43 +57,8 @@ def list_files(
             console.print(panel)
             return
 
-        # Create a table to display the files
-        table = Table(title=f"Files in workspace '{workspace}'")
-        table.add_column("Path", style="cyan")
-        table.add_column("Size", style="green")
-        table.add_column("Last Modified", style="yellow")
-        table.add_column("Version ID", style="blue")
-        table.add_column("Content Type", style="magenta")
+        print_rich_table(files.objects)
 
-        # Add files to the table
-        for file_obj in files.objects:
-            # Format the size
-            size = file_obj.size
-            if size is None:
-                size_str = "N/A"
-            elif size < 1024:
-                size_str = f"{size} B"
-            elif size < 1024 * 1024:
-                size_str = f"{size / 1024:.2f} KB"
-            else:
-                size_str = f"{size / (1024 * 1024):.2f} MB"
-
-            # Format the last modified date
-            last_modified = file_obj.last_modified.strftime("%Y-%m-%d %H:%M:%S") if file_obj.last_modified else "N/A"
-
-            # Add the row
-            table.add_row(
-                file_obj.object_name,
-                size_str,
-                last_modified,
-                file_obj.version_id or "N/A",
-                file_obj.content_type or "N/A",
-            )
-
-        # Print the table
-        console.print(table)
-
-        # Print a success message
         panel = get_argilla_themed_panel(
             f"Found {len(files.objects)} files in workspace '{workspace}'.",
             title="Files listed successfully",

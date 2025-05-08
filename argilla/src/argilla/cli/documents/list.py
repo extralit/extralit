@@ -1,14 +1,24 @@
-"""List documents in a workspace."""
+# Copyright 2024-present, Extralit Labs, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-import sys
-from typing import Optional
+"""List documents in a workspace."""
 
 import typer
 from rich.console import Console
-from rich.table import Table
 
 from argilla.client import Argilla
-from argilla.cli.rich import get_argilla_themed_panel
+from argilla.cli.rich import get_argilla_themed_panel, print_rich_table
 
 
 def list_documents(
@@ -46,33 +56,8 @@ def list_documents(
             console.print(panel)
             return
 
-        # Create a table to display the documents
-        table = Table(title=f"Documents in workspace '{workspace}'")
-        table.add_column("ID", style="cyan")
-        table.add_column("URL", style="green")
-        table.add_column("PMID", style="yellow")
-        table.add_column("DOI", style="blue")
-        table.add_column("Created", style="magenta")
-        table.add_column("Updated", style="magenta")
-
-        # Add documents to the table
-        for doc in documents:
-            # Format the dates
-            inserted_at = doc.inserted_at.strftime("%Y-%m-%d %H:%M:%S") if doc.inserted_at else "N/A"
-            updated_at = doc.updated_at.strftime("%Y-%m-%d %H:%M:%S") if doc.updated_at else "N/A"
-
-            # Add the row
-            table.add_row(
-                str(doc.id) if doc.id else "N/A",
-                doc.url or "N/A",
-                doc.pmid or "N/A",
-                doc.doi or "N/A",
-                inserted_at,
-                updated_at,
-            )
-
-        # Print the table
-        console.print(table)
+        # Use print_rich_table to display the documents
+        print_rich_table(documents, title=f"Documents in workspace '{workspace}'")
 
         # Print a success message
         panel = get_argilla_themed_panel(

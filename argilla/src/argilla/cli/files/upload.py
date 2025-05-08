@@ -1,9 +1,19 @@
-"""Upload a file to a workspace."""
+# Copyright 2024-present, Extralit Labs, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-import os
-import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import typer
 from rich.console import Console
@@ -16,10 +26,11 @@ from argilla.cli.rich import get_argilla_themed_panel
 def upload_file(
     file_path: Path = typer.Argument(..., help="Path to the file to upload", exists=True, readable=True),
     workspace: str = typer.Option(..., "--workspace", "-w", help="Workspace name"),
-    remote_path: Optional[str] = typer.Option(None, "--remote-path", "-r", help="Remote path to store the file (default: same as local filename)"),
+    remote_path: Optional[str] = typer.Option(
+        None, "--remote-path", "-r", help="Remote path to store the file (default: same as local filename)"
+    ),
     overwrite: bool = typer.Option(False, "--overwrite", "-o", help="Overwrite existing file"),
 ) -> None:
-    """Upload a file to a workspace."""
     console = Console()
 
     try:
@@ -67,10 +78,10 @@ def upload_file(
             console=console,
         ) as progress:
             task = progress.add_task(f"Uploading {file_path.name} to {workspace}/{remote_path}...", total=None)
-            
+
             # Upload the file
-            file_metadata = workspace_obj.put_file(remote_path, file_path)
-            
+            workspace_obj.put_file(remote_path, file_path)
+
             progress.update(task, completed=True, description=f"Uploaded {file_path.name} to {workspace}/{remote_path}")
 
         # Print a success message

@@ -109,11 +109,10 @@ def list_users(
     try:
         client = init_callback()
 
-        # Get all users or filter by workspace
         users = []
         if workspace:
-            # Get the workspace object by name
             workspace_obj = client.workspaces(name=workspace)
+
             if workspace_obj is None:
                 panel = get_argilla_themed_panel(
                     f"Workspace with name={workspace} doesn't exist.",
@@ -125,10 +124,13 @@ def list_users(
                 raise typer.Exit(code=1)
 
             users = workspace_obj.users
-        else:
+        elif client.me.role == Role.admin:
             users = client.users.list()
+        else:
+            raise typer.BadParameter(
+                "You are not authorized to list all users, please specify a workspace with --workspace"
+            )
 
-        # Filter by role if specified
         if role:
             users = [user for user in users if user.role == role]
 

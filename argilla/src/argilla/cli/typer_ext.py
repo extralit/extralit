@@ -1,4 +1,4 @@
-# Copyright 2024-present, Argilla, Inc.
+# Copyright 2024-present, Extralit Labs, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import sys
 from functools import wraps
 from typing import Any, Callable, Coroutine, Dict, Type, TypeVar
@@ -24,7 +23,6 @@ if sys.version_info < (3, 10):
 else:
     from typing import ParamSpec
 
-
 P = ParamSpec("P")
 R = TypeVar("R")
 
@@ -34,10 +32,11 @@ HandleErrorFunc = Callable[[Exception], None]
 class ArgillaTyper(typer.Typer):
     error_handlers: Dict[Type[Exception], HandleErrorFunc] = {}
 
-    # https://github.com/tiangolo/typer/issues/88#issuecomment-1613013597
     def command(
         self, *args: Any, **kwargs: Any
     ) -> Callable[[Callable[P, Coroutine[Any, Any, R]]], Callable[P, Coroutine[Any, Any, R]]]:
+        import asyncio
+
         super_command = super().command(*args, **kwargs)
 
         def decorator(func: Callable[P, Coroutine[Any, Any, R]]) -> Callable[P, Coroutine[Any, Any, R]]:
