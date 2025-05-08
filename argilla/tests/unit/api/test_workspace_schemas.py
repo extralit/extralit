@@ -1,27 +1,32 @@
-"""Tests for the workspace schemas API."""
+# Copyright 2024-present, Extralit Labs, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-import os
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-from uuid import UUID
+from unittest.mock import MagicMock
 
 import pytest
 
 from argilla._api._workspaces import WorkspacesAPI
 from argilla._models._files import ListObjectsResponse, ObjectMetadata, FileObjectResponse
-from extralit.constants import DEFAULT_SCHEMA_S3_PATH
 
-# Mock the pandera and SchemaStructure imports
 try:
     import pandera as pa
     from extralit.extraction.models import SchemaStructure
+
     PANDERA_AVAILABLE = True
 except ImportError:
     PANDERA_AVAILABLE = False
-    # Define fallback constants if extralit is not available
-    DEFAULT_SCHEMA_S3_PATH = "schemas/"
 
-    # Define minimal classes for compatibility
     class SchemaStructure:
         def __init__(self, schemas=None):
             self.schemas = schemas or []
@@ -62,22 +67,22 @@ def test_get_schemas(workspace_api):
     """Test getting schemas from a workspace."""
     # Mock the list_files method
     workspace_api.list_files = MagicMock()
-    workspace_api.list_files.return_value = ListObjectsResponse(objects=[
-        ObjectMetadata(
-            bucket_name="test-workspace",
-            object_name="schemas/test_schema",
-            content_type="application/json",
-            etag="test-etag",
-            version_id="test-version-id",
-            version_tag="test-version-tag"
-        )
-    ])
+    workspace_api.list_files.return_value = ListObjectsResponse(
+        objects=[
+            ObjectMetadata(
+                bucket_name="test-workspace",
+                object_name="schemas/test_schema",
+                content_type="application/json",
+                etag="test-etag",
+                version_id="test-version-id",
+                version_tag="test-version-tag",
+            )
+        ]
+    )
 
     # Mock the get_file method
     workspace_api.get_file = MagicMock()
-    workspace_api.get_file.return_value = FileObjectResponse(
-        content=b'{"name": "test_schema"}'
-    )
+    workspace_api.get_file.return_value = FileObjectResponse(content=b'{"name": "test_schema"}')
 
     # Mock the import error to skip the actual implementation
     workspace_api.get_schemas = MagicMock()
@@ -109,16 +114,18 @@ def test_update_schemas(workspace_api, mock_schema_structure):
     """Test updating schemas in a workspace."""
     # Mock the update_schemas method
     workspace_api.update_schemas = MagicMock()
-    workspace_api.update_schemas.return_value = ListObjectsResponse(objects=[
-        ObjectMetadata(
-            bucket_name="test-workspace",
-            object_name="schemas/test_schema",
-            content_type="application/json",
-            etag="test-etag",
-            version_id="test-version-id",
-            version_tag="test-version-tag"
-        )
-    ])
+    workspace_api.update_schemas.return_value = ListObjectsResponse(
+        objects=[
+            ObjectMetadata(
+                bucket_name="test-workspace",
+                object_name="schemas/test_schema",
+                content_type="application/json",
+                etag="test-etag",
+                version_id="test-version-id",
+                version_tag="test-version-tag",
+            )
+        ]
+    )
 
     # Call the method
     result = workspace_api.update_schemas("test-workspace", mock_schema_structure)
