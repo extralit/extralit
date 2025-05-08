@@ -22,46 +22,18 @@ from rich.markdown import Markdown
 app = typer.Typer(invoke_without_command=True)
 
 
-def get_server_info():
-    """Get server information.
-
-    Returns:
-        ServerInfo: Object containing server information.
-    """
-    # Initialize client and get server info
-    client = init_callback()
-
-    # Get server info from client
-    server_info = client.get_server_info()
-
-    # Create ServerInfo object for backward compatibility
-    class ServerInfo:
-        def __init__(self):
-            self.url = server_info["url"]
-            self.version = server_info["version"]
-            self.database_version = server_info["database_version"]
-
-    return ServerInfo()
-
-
 @app.callback(help="Displays information about the Extralit client and server")
 def info() -> None:
     """Display information about the Extralit client and server."""
     try:
         from argilla import __version__ as version
     except ImportError:
-        version = "2.0.0"  # Fallback version for development
+        version = "2.0.0"
 
-    # Get server info (this will initialize the client)
-    info = get_server_info()
+    client = init_callback()
 
     panel = get_argilla_themed_panel(
-        Markdown(
-            f"Connected to {info.url}\n"
-            f"- **Client version:** {version}\n"
-            f"- **Server version:** {info.version}\n"
-            f"- **Database version:** {info.database_version}\n"
-        ),
+        Markdown(f"Connected to {client.api_url}\n" f"- **Client version:** {version}\n"),
         title="Extralit Info",
         title_align="left",
     )

@@ -26,28 +26,24 @@ def runner():
 
 
 def test_users_help(runner):
-    """Test that the users command shows help message."""
     result = runner.invoke(app, ["users", "--help"])
     assert result.exit_code == 0
     assert "user management" in result.stdout.lower()
 
 
 def test_users_create_command_help(runner):
-    """Test the help message for the 'create' subcommand."""
     result = runner.invoke(app, ["users", "create", "--help"])
     assert result.exit_code == 0
     assert "creates a new user" in result.stdout.lower()
 
 
 def test_users_list_command_help(runner):
-    """Test the help message for the 'list' subcommand."""
     result = runner.invoke(app, ["users", "list", "--help"])
     assert result.exit_code == 0
     assert "list users" in result.stdout.lower()
 
 
 def test_users_delete_command_help(runner):
-    """Test the help message for the 'delete' subcommand."""
     result = runner.invoke(app, ["users", "delete", "--help"])
     assert result.exit_code == 0
     assert "deletes a user" in result.stdout.lower()
@@ -56,7 +52,6 @@ def test_users_delete_command_help(runner):
 @patch("rich.console.Console.print")
 @pytest.mark.skip(reason="Test temporarily disabled")
 def test_users_create_basic(mock_print, runner):
-    """Test the basic 'create user' command functionality."""
     # Simulate user input for the prompt
     result = runner.invoke(
         app,
@@ -78,7 +73,6 @@ def test_users_create_basic(mock_print, runner):
 @patch("rich.console.Console.print")
 @pytest.mark.skip(reason="Test temporarily disabled")
 def test_users_create_with_role_and_workspace(mock_print, runner):
-    """Test creating a user with custom role and workspace."""
     result = runner.invoke(
         app,
         [
@@ -112,7 +106,6 @@ def test_users_create_with_role_and_workspace(mock_print, runner):
 
 @patch("rich.console.Console.print")
 def test_users_create_user_exists(mock_print, runner):
-    """Test creating a user that already exists (should fail)."""
     # Make print raise KeyError to simulate user already exists
     mock_print.side_effect = KeyError("User already exists")
 
@@ -129,7 +122,6 @@ def test_users_create_user_exists(mock_print, runner):
 @patch("rich.console.Console.print")
 @pytest.mark.skip(reason="Test temporarily disabled")
 def test_users_list(mock_print, runner):
-    """Test the 'list users' command functionality."""
     result = runner.invoke(app, ["users", "list"])
 
     assert result.exit_code == 0
@@ -142,7 +134,6 @@ def test_users_list(mock_print, runner):
 @patch("rich.console.Console.print")
 @pytest.mark.skip(reason="Test temporarily disabled")
 def test_users_list_with_filters(mock_print, runner):
-    """Test the 'list users' command with workspace and role filters."""
     result = runner.invoke(app, ["users", "list", "--workspace", "research", "--role", "owner"])
 
     assert result.exit_code == 0
@@ -155,7 +146,6 @@ def test_users_list_with_filters(mock_print, runner):
 @patch("rich.console.Console.print")
 @pytest.mark.skip(reason="Test temporarily disabled")
 def test_users_delete(mock_print, runner):
-    """Test the 'delete user' command functionality."""
     result = runner.invoke(app, ["users", "delete", "--username", "testuser"])
 
     assert result.exit_code == 0
@@ -170,7 +160,6 @@ def test_users_delete(mock_print, runner):
 
 @patch("rich.console.Console.print")
 def test_users_delete_nonexistent(mock_print, runner):
-    """Test deleting a user that doesn't exist (should fail)."""
     # Make print raise ValueError to simulate user not found
     mock_print.side_effect = ValueError("User not found")
 
