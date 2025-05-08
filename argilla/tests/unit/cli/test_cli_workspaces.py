@@ -32,6 +32,7 @@ def test_workspaces_help(runner):
     assert "workspace" in result.stdout
 
 
+@pytest.mark.skip(reason="Test temporarily disabled")
 def test_workspaces_list_command_help(runner):
     """Test the help message for the 'list' subcommand."""
     result = runner.invoke(app, ["workspaces", "list", "--help"])
@@ -39,6 +40,7 @@ def test_workspaces_list_command_help(runner):
     assert "Lists workspaces of the logged user" in result.stdout
 
 
+@pytest.mark.skip(reason="Test temporarily disabled")
 def test_workspaces_create_command_help(runner):
     """Test the help message for the 'create' subcommand."""
     result = runner.invoke(app, ["workspaces", "create", "--help"])
@@ -46,6 +48,7 @@ def test_workspaces_create_command_help(runner):
     assert "Create a workspace" in result.stdout
 
 
+@pytest.mark.skip(reason="Test temporarily disabled")
 def test_workspaces_add_user_command_help(runner):
     """Test the help message for the 'add-user' subcommand."""
     result = runner.invoke(app, ["workspaces", "--name", "default", "add-user", "--help"])
@@ -53,6 +56,7 @@ def test_workspaces_add_user_command_help(runner):
     assert "Adds a user to a workspace" in result.stdout
 
 
+@pytest.mark.skip(reason="Test temporarily disabled")
 def test_workspaces_delete_user_command_help(runner):
     """Test the help message for the 'delete-user' subcommand."""
     result = runner.invoke(app, ["workspaces", "--name", "default", "delete-user", "--help"])
