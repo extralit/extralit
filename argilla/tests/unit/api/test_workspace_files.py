@@ -18,7 +18,7 @@ from uuid import UUID
 import pytest
 
 from argilla._api._workspaces import WorkspacesAPI
-from argilla._models._files import ListObjectsResponse, ObjectMetadata, FileObjectResponse
+from argilla._models._files import ListObjectsResponse, FileObjectResponse
 from argilla._models._documents import Document
 
 
@@ -110,7 +110,6 @@ def test_put_file(workspace_api, tmp_path):
 
     result = workspace_api.put_file("test-workspace", "test-file.txt", test_file)
 
-    assert isinstance(result, ObjectMetadata)
     assert result.bucket_name == "test-workspace"
     assert result.object_name == "test-file.txt"
     assert result.etag == "test-etag"
