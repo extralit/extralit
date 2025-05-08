@@ -15,6 +15,7 @@
 from typing import TYPE_CHECKING, List, Optional, Union
 import traceback
 
+
 from rich.console import Console, RenderableType
 from rich.panel import Panel
 from rich.table import Table
@@ -22,6 +23,14 @@ from rich.text import Text
 
 if TYPE_CHECKING:
     from argilla._resource import Resource
+    from argilla._models._documents import Document
+    from argilla._models._files import ObjectMetadata
+
+    try:
+        import pandas as pd
+        import pandera as pa
+    except ImportError:
+        pass
 
 
 def get_argilla_themed_panel(
@@ -49,6 +58,11 @@ def get_argilla_themed_panel(
     content = renderable
 
     if exception is not None and debug:
+        # Get exception type and message
+        exc_type = type(exception).__name__
+        exc_msg = str(exception)
+
+        # Get traceback frames
         tb = traceback.extract_tb(exception.__traceback__)
         # Get just the first and last frames for a minimal trace
         if len(tb) > 1:
@@ -56,7 +70,7 @@ def get_argilla_themed_panel(
         else:
             minimal_tb = tb
 
-        trace_str = "\n\n[bold]Debug trace:[/bold]\n"
+        trace_str = f"\n\n[bold]Exception:[/bold] {exc_type}: {exc_msg}\n\n[bold]Debug trace:[/bold]\n"
         for frame in minimal_tb:
             file, line, func, code = frame
             trace_str += f"File '{file}', line {line}, in {func}\n  {code}\n"
@@ -64,7 +78,6 @@ def get_argilla_themed_panel(
         if isinstance(content, str):
             content = f"{content}{trace_str}"
         else:
-            # For other renderables, we wrap both in a list
             content = [content, Text.from_markup(trace_str)]
 
     return Panel(
@@ -76,9 +89,35 @@ def get_argilla_themed_panel(
     )
 
 
+def console_table_to_pandas_df(table: Table) -> "pd.DataFrame":
+    """
+    Converts a rich table to a pandas DataFrame.
+
+    Args:
+        table: The rich table to convert
+
+    Returns:
+        A pandas DataFrame
+    """
+    try:
+        import pandas as pd
+    except ImportError:
+        raise ImportError("pandas is required to convert a table to a DataFrame. Install it with pip install pandas")
+
+    headers = [column.header for column in table.columns]
+    rows = []
+    for row in table.rows:
+        rows.append([cell.renderable if hasattr(cell, "renderable") else str(cell) for cell in row.cells])
+
+    return pd.DataFrame(rows, columns=headers)
+
+
 def print_rich_table(
-    resources: List["Resource"], columns: Optional[List[str]] = None, title: Optional[str] = None
-) -> None:
+    resources: List[Union["Resource", "pa.DataFrameSchema", "ObjectMetadata", "Document"]],
+    columns: Optional[List[str]] = None,
+    title: Optional[str] = None,
+    return_table: bool = False,
+) -> Optional[Table]:
     """
     Prints resources in a rich formatted table.
 
@@ -86,12 +125,19 @@ def print_rich_table(
         resources: List of resources to display
         columns: Optional list of columns to display. If None, uses default columns.
         title: Optional title for the table. If None, uses the resource_type.
-    """
-    resource_type = resources[0].__class__.__name__
+        return_table: If True, return the table instead of printing it.
 
+    Returns:
+        The table object if return_table is True, otherwise None.
+    """
     if not resources:
-        Console().print(f"No {resource_type.lower()}s found")
-        return
+        if not return_table:
+            Console().print("No resources found")
+        return None
+
+    resource_type = type(resources[0]).__name__
+    if hasattr(resources[0], "__class__") and hasattr(resources[0].__class__, "__name__"):
+        resource_type = resources[0].__class__.__name__
 
     title = title or resource_type + "s"
     table = Table(title=title, show_lines=False)
@@ -150,25 +196,6 @@ def print_rich_table(
                 "Last Update Date": "blue",
             },
         },
-        "Schema": {
-            "columns": ["ID", "Name", "Description", "Version", "Created", "Updated"],
-            "getters": {
-                "ID": lambda r: str(r.id),
-                "Name": lambda r: r.name,
-                "Description": lambda r: r.description,
-                "Version": lambda r: r.version,
-                "Created": lambda r: r.created_at.isoformat(sep=" ") if r.created_at else "",
-                "Updated": lambda r: r.updated_at.isoformat(sep=" ") if r.updated_at else "",
-            },
-            "styles": {
-                "ID": "cyan",
-                "Name": "green",
-                "Description": "yellow",
-                "Version": "magenta",
-                "Created": "blue",
-                "Updated": "blue",
-            },
-        },
         "ObjectMetadata": {
             "columns": ["Object Name", "Size", "Last Modified", "Version ID", "Content Type"],
             "getters": {
@@ -205,6 +232,21 @@ def print_rich_table(
                 "Updated": "blue",
             },
         },
+        "DataFrameSchema": {
+            "columns": ["Name", "Description", "Columns", "Checks"],
+            "getters": {
+                "Name": lambda r: r.name,
+                "Description": lambda r: r.description.strip().replace("\n", " ") if hasattr(r, "description") else "",
+                "Columns": lambda r: len(r.columns) if hasattr(r, "columns") else 0,
+                "Checks": lambda r: len(r.checks) if hasattr(r, "checks") else 0,
+            },
+            "styles": {
+                "Name": "green",
+                "Description": "yellow",
+                "Columns": "cyan",
+                "Checks": "magenta",
+            },
+        },
     }
 
     config = column_configs.get(resource_type, {})
@@ -237,4 +279,8 @@ def print_rich_table(
 
         table.add_row(*row_values)
 
-    Console().print(table)
+    if return_table:
+        return table
+    else:
+        Console().print(table)
+        return None

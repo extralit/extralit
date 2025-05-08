@@ -1,4 +1,4 @@
-# Copyright 2024-present, Argilla, Inc.
+# Copyright 2024-present, Extralit Labs, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,19 +15,19 @@
 import os
 import uuid
 import tempfile
-from pathlib import Path
 
 import pytest
 
 try:
     import pandera as pa
     from extralit.extraction.models import SchemaStructure
+
     PANDERA_AVAILABLE = True
 except ImportError:
     PANDERA_AVAILABLE = False
     pytest.skip("pandera and extralit are required for schema tests", allow_module_level=True)
 
-from argilla import Argilla, Workspace
+from argilla import Workspace
 
 
 @pytest.fixture
@@ -54,86 +54,86 @@ class TestWorkspaceSchemas:
     def test_get_schemas(self, workspace: Workspace):
         """Test getting schemas from a workspace."""
         # Get schemas from the workspace
-        schemas = workspace.get_schemas()
-        
+        schemas = workspace.list_schemas()
+
         # Verify the result
         assert hasattr(schemas, "schemas")
         # Initially, there should be no schemas
         assert len(schemas.schemas) == 0
-    
+
     def test_add_and_get_schema(self, workspace: Workspace, test_schema):
         """Test adding a schema to a workspace and getting it."""
         # Add the schema
         workspace.add_schema(test_schema)
-        
+
         # Get schemas from the workspace
-        schemas = workspace.get_schemas()
-        
+        schemas = workspace.list_schemas()
+
         # Verify the schema is in the list
         assert len(schemas.schemas) > 0
         assert any(schema.name == test_schema.name for schema in schemas.schemas)
-        
+
         # Get the schema by name
         schema = next((s for s in schemas.schemas if s.name == test_schema.name), None)
         assert schema is not None
-        
+
         # Verify the schema columns
         assert "text" in schema.columns
         assert "label" in schema.columns
         assert "score" in schema.columns
-    
+
     def test_update_schemas(self, workspace: Workspace, test_schema_structure):
         """Test updating schemas in a workspace."""
         # Update schemas in the workspace
         result = workspace.update_schemas(test_schema_structure)
-        
+
         # Verify the result
         assert hasattr(result, "objects")
         assert len(result.objects) > 0
-        
+
         # Get schemas from the workspace
-        schemas = workspace.get_schemas()
-        
+        schemas = workspace.list_schemas()
+
         # Verify the schemas are in the list
         assert len(schemas.schemas) > 0
         for schema in test_schema_structure.schemas:
             assert any(s.name == schema.name for s in schemas.schemas)
-    
+
     def test_add_schema_with_exclude(self, workspace: Workspace, test_schema):
         """Test getting schemas with exclude parameter."""
         # Add the schema
         workspace.add_schema(test_schema)
-        
+
         # Get schemas from the workspace with exclude
-        schemas = workspace.get_schemas(exclude=[test_schema.name])
-        
+        schemas = workspace.list_schemas(exclude=[test_schema.name])
+
         # Verify the schema is not in the list
         assert not any(schema.name == test_schema.name for schema in schemas.schemas)
-    
+
     def test_schema_to_json_and_back(self, workspace: Workspace, test_schema):
         """Test schema serialization and deserialization."""
         # Add the schema
         workspace.add_schema(test_schema)
-        
+
         # Get schemas from the workspace
-        schemas = workspace.get_schemas()
-        
+        schemas = workspace.list_schemas()
+
         # Get the schema by name
         schema = next((s for s in schemas.schemas if s.name == test_schema.name), None)
         assert schema is not None
-        
+
         # Convert to JSON
         schema_json = schema.to_json()
-        
+
         # Create a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file:
             temp_file.write(schema_json.encode())
             temp_file_path = temp_file.name
-        
+
         try:
             # Load from JSON
             loaded_schema = pa.DataFrameSchema.from_json(schema_json)
-            
+
             # Verify the loaded schema
             assert loaded_schema.name == schema.name
             assert "text" in loaded_schema.columns

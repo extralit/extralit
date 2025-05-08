@@ -1,4 +1,4 @@
-# Copyright 2024-present, Argilla, Inc.
+# Copyright 2024-present, Extralit Labs, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 import os
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, TYPE_CHECKING
 from uuid import UUID
 
 import httpx
@@ -23,12 +23,15 @@ import httpx
 from argilla._api._base import ResourceAPI
 from argilla._exceptions._api import api_error_handler, ArgillaAPIError
 from argilla._models._workspace import WorkspaceModel
-from argilla._models._files import ListObjectsResponse, ObjectMetadata, FileObjectResponse
-from argilla._models._documents import Document
 
 from extralit.constants import DEFAULT_SCHEMA_S3_PATH
 
-# Set up logging
+if TYPE_CHECKING:
+    from extralit.extraction.models.schema import SchemaStructure
+    from argilla._models._files import ListObjectsResponse, ObjectMetadata, FileObjectResponse
+    from argilla._models._documents import Document
+
+
 logger = logging.getLogger(__name__)
 
 __all__ = ["WorkspacesAPI"]
@@ -53,7 +56,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
         return workspace
 
     @api_error_handler
-    def get(self, workspace_id: UUID) -> WorkspaceModel:
+    def get(self, workspace_id: "UUID") -> WorkspaceModel:
         response = self.http_client.get(url=f"{self.url_stub}/{workspace_id}")
         response.raise_for_status()
         response_json = response.json()
@@ -61,11 +64,11 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
         return workspace
 
     @api_error_handler
-    def delete(self, workspace_id: UUID) -> None:
+    def delete(self, workspace_id: "UUID") -> None:
         response = self.http_client.delete(url=f"{self.url_stub}/{workspace_id}")
         response.raise_for_status()
 
-    def exists(self, workspace_id: UUID) -> bool:
+    def exists(self, workspace_id: "UUID") -> bool:
         response = self.http_client.get(url=f"{self.url_stub}/{workspace_id}")
         return response.status_code == 200
 
@@ -83,7 +86,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
         return workspaces
 
     @api_error_handler
-    def list_by_user_id(self, user_id: UUID) -> List[WorkspaceModel]:
+    def list_by_user_id(self, user_id: "UUID") -> List[WorkspaceModel]:
         response = self.http_client.get(f"/api/v1/users/{user_id}/workspaces")
         response.raise_for_status()
         response_json = response.json()
@@ -108,7 +111,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
                 return workspace
 
     @api_error_handler
-    def add_user(self, workspace_id: UUID, user_id: UUID) -> None:
+    def add_user(self, workspace_id: "UUID", user_id: "UUID") -> None:
         # TODO: This method is already defined in UsersAPI and should be removed from here
         response = self.http_client.post(f"{self.url_stub}/{workspace_id}/users/{user_id}")
         response.raise_for_status()
@@ -119,7 +122,9 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
     ####################
 
     @api_error_handler
-    def list_files(self, workspace_name: str, path: str, recursive: bool = True, include_version: bool = True) -> ListObjectsResponse:
+    def list_files(
+        self, workspace_name: str, path: str, recursive: bool = True, include_version: bool = True
+    ) -> "ListObjectsResponse":
         """List files in a workspace.
 
         Args:
@@ -135,6 +140,8 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             ArgillaAPIError: If the API request fails.
             ValueError: If the workspace name is invalid.
         """
+        from argilla._models._files import ListObjectsResponse
+
         if not workspace_name:
             logger.error("Workspace name cannot be empty")
             raise ValueError("Workspace name cannot be empty")
@@ -148,12 +155,29 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
 
         try:
             response = self.http_client.get(url=url, params=params)
+
+            # Handle 404 directly
+            if response.status_code == 404:
+                logger.info(f"No files found at path '{path}' in workspace '{workspace_name}'")
+                return ListObjectsResponse(objects=[])
+
             response.raise_for_status()
 
             result = ListObjectsResponse(**response.json())
+
+            # Filter out any object references that are marked as deleted (etag=None, size=None)
+            valid_objects = [obj for obj in result.objects if obj.etag is not None or obj.size is not None]
+
+            if len(valid_objects) < len(result.objects):
+                logger.info(f"Filtered out {len(result.objects) - len(valid_objects)} deleted files")
+                result.objects = valid_objects
+
             logger.info(f"Found {len(result.objects)} files in workspace '{workspace_name}'")
             return result
         except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.info(f"No files found at path '{path}' in workspace '{workspace_name}'")
+                return ListObjectsResponse(objects=[])
             logger.error(f"Failed to list files in workspace '{workspace_name}': {str(e)}")
             raise ArgillaAPIError(f"Failed to list files: {str(e)}") from e
         except Exception as e:
@@ -161,7 +185,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             raise
 
     @api_error_handler
-    def get_file(self, workspace_name: str, path: str, version_id: Optional[str] = None) -> FileObjectResponse:
+    def get_file(self, workspace_name: str, path: str, version_id: Optional[str] = None) -> "FileObjectResponse":
         """Get a file from a workspace.
 
         Args:
@@ -177,6 +201,8 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             ValueError: If the workspace name or path is invalid.
             FileNotFoundError: If the file does not exist.
         """
+        from argilla._models._files import FileObjectResponse, ObjectMetadata
+
         if not workspace_name:
             logger.error("Workspace name cannot be empty")
             raise ValueError("Workspace name cannot be empty")
@@ -191,10 +217,21 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
 
         try:
             response = self.http_client.get(url=url, params=params)
+
+            # Handle 404 directly
+            if response.status_code == 404:
+                logger.error(f"File '{path}' not found in workspace '{workspace_name}'")
+                raise FileNotFoundError(f"File '{path}' not found in workspace '{workspace_name}'")
+
             response.raise_for_status()
 
             # Create a FileObjectResponse with the content
             file_response = FileObjectResponse(content=response.content)
+
+            # Check if the file is a deleted file (empty content with headers)
+            if len(response.content) == 0 and "X-Amz-Meta-Version-Tag" in response.headers:
+                logger.warning(f"File '{path}' exists but has empty content (likely deleted)")
+                raise FileNotFoundError(f"File '{path}' exists but has empty content (likely deleted)")
 
             # Get metadata if available
             if "X-Amz-Meta-Version-Tag" in response.headers:
@@ -203,25 +240,27 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
                     object_name=path,
                     content_type=response.headers.get("Content-Type"),
                     etag=response.headers.get("ETag"),
-                    version_id=version_id,
+                    version_id=version_id or response.headers.get("X-Amz-Version-Id"),
                     version_tag=response.headers.get("X-Amz-Meta-Version-Tag"),
                 )
                 file_response.metadata = metadata
 
             logger.info(f"Successfully retrieved file '{path}' from workspace '{workspace_name}'")
             return file_response
+
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 logger.error(f"File '{path}' not found in workspace '{workspace_name}'")
                 raise FileNotFoundError(f"File '{path}' not found in workspace '{workspace_name}'") from e
             logger.error(f"Failed to get file '{path}' from workspace '{workspace_name}': {str(e)}")
             raise ArgillaAPIError(f"Failed to get file: {str(e)}") from e
+
         except Exception as e:
             logger.error(f"Unexpected error getting file '{path}' from workspace '{workspace_name}': {str(e)}")
             raise
 
     @api_error_handler
-    def put_file(self, workspace_name: str, path: str, file_path: Path) -> ObjectMetadata:
+    def put_file(self, workspace_name: str, path: str, file_path: Path) -> "ObjectMetadata":
         """Upload a file to a workspace.
 
         Args:
@@ -263,7 +302,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
         file_name = os.path.basename(file_path)
 
         try:
-            with open(file_path, 'rb') as file_data:
+            with open(file_path, "rb") as file_data:
                 files = {"file": (file_name, file_data, "application/octet-stream")}
                 response = self.http_client.post(url=url, files=files)
                 response.raise_for_status()
@@ -335,7 +374,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             file_response = self.get_file(workspace_name, path)
 
             # Compare the content with the local file
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 local_content = f.read()
 
             return file_response.content == local_content
@@ -347,7 +386,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
     ####################
 
     @api_error_handler
-    def add_document(self, document: Document) -> UUID:
+    def add_document(self, document: "Document") -> "UUID":
         """Add a document to a workspace.
 
         Args:
@@ -361,7 +400,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
 
         if document.file_path:
             file_name = os.path.basename(document.file_path)
-            with open(document.file_path, 'rb') as file_data:
+            with open(document.file_path, "rb") as file_data:
                 files = {
                     "file_data": (file_name, file_data, "application/pdf"),
                 }
@@ -373,7 +412,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
         return UUID(response.json())
 
     @api_error_handler
-    def get_documents(self, workspace_id: UUID) -> List[Document]:
+    def get_documents(self, workspace_id: "UUID") -> List["Document"]:
         """Get documents from a workspace.
 
         Args:
@@ -382,6 +421,8 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
         Returns:
             A list of documents.
         """
+        from argilla._models._documents import Document
+
         url = f"/api/v1/documents/workspace/{workspace_id}"
         response = self.http_client.get(url=url)
         response.raise_for_status()
@@ -406,7 +447,9 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
     ####################
 
     @api_error_handler
-    def get_schemas(self, workspace_name: str, prefix: str = DEFAULT_SCHEMA_S3_PATH, exclude: Optional[List[str]] = None) -> Any:
+    def list_schemas(
+        self, workspace_name: str, prefix: str = DEFAULT_SCHEMA_S3_PATH, exclude: Optional[List[str]] = None
+    ) -> "SchemaStructure":
         """Get schemas from a workspace.
 
         Args:
@@ -416,39 +459,89 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
 
         Returns:
             A SchemaStructure containing the schemas.
+
+        Raises:
+            ImportError: If required packages are missing.
+            ArgillaAPIError: If the API request fails.
+            ValueError: If the workspace name is invalid.
         """
-        # Import here to avoid circular imports
         try:
             import pandera as pa
             from extralit.extraction.models import SchemaStructure
         except ImportError:
-            raise ImportError("The 'pandera' and 'extralit' packages are required to use schema methods. "
-                             "Please install them with 'pip install pandera extralit'.")
+            logger.error("Required packages missing for schema operations")
+            raise ImportError(
+                "The 'pandera' and 'extralit' packages are required to use schema methods. "
+                "Please install them with 'pip install pandera extralit'."
+            )
 
-        # List all schema files in the workspace
-        schema_files = self.list_files(workspace_name, prefix, recursive=True, include_version=True)
+        try:
+            schema_files = self.list_files(workspace_name, path=prefix, recursive=True, include_version=True)
 
-        # Filter out excluded schemas
-        if exclude:
-            schema_files.objects = [obj for obj in schema_files.objects if os.path.basename(obj.object_name) not in exclude]
+            # Filter out deleted schema versions (those with etag=None and size=None)
+            schema_files.objects = [
+                obj for obj in schema_files.objects if obj.etag is not None and obj.size is not None
+            ]
 
-        # Get the content of each schema file and parse it
-        schemas = {}
-        for obj in schema_files.objects:
-            try:
-                # Get the schema file content
-                file_response = self.get_file(workspace_name, obj.object_name)
+            logger.info(f"Found {len(schema_files.objects)} valid schema files in workspace '{workspace_name}'")
 
-                # Parse the schema from JSON
-                schema_json = file_response.content.decode('utf-8')
-                schema = pa.DataFrameSchema.from_json(schema_json)
+            if not schema_files.objects:
+                logger.info(f"No valid schemas found in workspace '{workspace_name}' with prefix '{prefix}'")
+                return SchemaStructure(schemas=[])
 
-                # Add the schema to the dictionary
-                schemas[schema.name] = schema
-            except Exception as e:
-                self._log_message(f"Error loading schema {obj.object_name}: {str(e)}")
+            # Filter by exclude list
+            if exclude:
+                object_names_before = len(schema_files.objects)
+                schema_files.objects = [
+                    obj for obj in schema_files.objects if os.path.basename(obj.object_name) not in exclude
+                ]
+                logger.info(f"Excluded {object_names_before - len(schema_files.objects)} schemas")
 
-        return SchemaStructure(schemas=list(schemas.values()))
+            # Group by schema name to get the latest version
+            schema_versions = {}
+            for obj in schema_files.objects:
+                schema_name = obj.object_name
+                if schema_name not in schema_versions or (
+                    obj.last_modified
+                    and schema_versions[schema_name].last_modified
+                    and obj.last_modified > schema_versions[schema_name].last_modified
+                ):
+                    schema_versions[schema_name] = obj
+
+            # Load each schema
+            schemas = {}
+            for obj in schema_versions.values():
+                try:
+                    file_response = self.get_file(workspace_name, obj.object_name)
+
+                    # Skip empty content
+                    if not file_response.content or len(file_response.content) == 0:
+                        logger.debug(f"Skipping empty schema file '{obj.object_name}'")
+                        continue
+
+                    # Parse the schema
+                    schema_json = file_response.content.decode("utf-8")
+                    schema = pa.DataFrameSchema.from_json(schema_json)
+
+                    # Add to dictionary
+                    schemas[schema.name] = schema
+                    logger.debug(f"Successfully loaded schema '{schema.name}' from '{obj.object_name}'")
+
+                except FileNotFoundError:
+                    logger.debug(f"Schema file '{obj.object_name}' not found in workspace '{workspace_name}'")
+                    continue
+                except Exception as e:
+                    logger.warning(f"Error loading schema {obj.object_name}: {str(e)}")
+                    continue
+
+            logger.info(f"Successfully loaded {len(schemas)} schemas from workspace '{workspace_name}'")
+            return SchemaStructure(schemas=list(schemas.values()))
+
+        except Exception as e:
+            logger.error(f"Unexpected error loading schemas from workspace '{workspace_name}': {str(e)}")
+            if isinstance(e, (ImportError, ArgillaAPIError, ValueError)):
+                raise
+            raise ArgillaAPIError(f"Failed to load schemas: {str(e)}") from e
 
     @api_error_handler
     def add_schema(self, workspace_name: str, schema: Any, prefix: str = DEFAULT_SCHEMA_S3_PATH) -> None:
@@ -459,38 +552,28 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             schema: The schema to add.
             prefix: The prefix to store the schema.
         """
-        # Import here to avoid circular imports
-        try:
-            import pandera as pa
-        except ImportError:
-            raise ImportError("The 'pandera' package is required to use schema methods. "
-                             "Please install it with 'pip install pandera'.")
-
-        # Create the schema file path
         object_path = os.path.join(prefix, schema.name)
 
-        # Create a temporary file with the schema JSON
-        temp_dir = Path('/tmp')
+        temp_dir = Path("/tmp")
         temp_dir.mkdir(exist_ok=True)
-        file_path = temp_dir / schema.name
+        file_path: Path = temp_dir / schema.name
 
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(schema.to_json())
 
-        # Check if the schema already exists
         try:
             if self.exists_file(workspace_name, object_path, file_path):
                 raise ValueError(f"Schema with name=`{schema.name}` already exists in workspace `{workspace_name}`.")
 
-            # Upload the schema file
             self.put_file(workspace_name, object_path, file_path)
         finally:
-            # Clean up the temporary file
             if file_path.exists():
                 file_path.unlink()
 
     @api_error_handler
-    def update_schemas(self, workspace_name: str, schemas: Any, check_existing: bool = True, prefix: str = DEFAULT_SCHEMA_S3_PATH) -> ListObjectsResponse:
+    def update_schemas(
+        self, workspace_name: str, schemas: Any, assert_exists: bool = True, prefix: str = DEFAULT_SCHEMA_S3_PATH
+    ) -> "ListObjectsResponse":
         """Update schemas in a workspace.
 
         Args:
@@ -503,7 +586,7 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             A list of updated schema files.
         """
         # Create a temporary directory for schema files
-        temp_dir = Path('/tmp')
+        temp_dir = Path("/tmp")
         temp_dir.mkdir(exist_ok=True)
 
         # Track the metadata of updated schemas
@@ -516,13 +599,15 @@ class WorkspacesAPI(ResourceAPI[WorkspaceModel]):
             file_path = temp_dir / schema.name
 
             # Write the schema to a temporary file
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 f.write(schema.to_json())
 
             try:
                 # Check if the schema already exists and is unchanged
-                if check_existing and self.exists_file(workspace_name, object_path, file_path):
-                    self._log_message(f"Skipping schema name='{schema.name}' update since it's unmodified in workspace '{workspace_name}'.")
+                if assert_exists and self.exists_file(workspace_name, object_path, file_path):
+                    self._log_message(
+                        f"Skipping schema name='{schema.name}' update since it's unmodified in workspace '{workspace_name}'."
+                    )
                     continue
 
                 # Upload the schema file

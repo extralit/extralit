@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from pathlib import Path
 
 import typer
@@ -20,51 +20,27 @@ import typer
 from argilla.cli.callback import init_callback
 from argilla.cli.rich import get_argilla_themed_panel
 from rich.console import Console
-from rich.table import Table
+
+if TYPE_CHECKING:
+    pass
 
 
-# Commands that require specific parameters
-_COMMANDS_REQUIRING_WORKSPACE = ["upload", "list", "delete", "download"]
-
-
-def callback(
-    ctx: typer.Context,
-    workspace: str = typer.Option(None, "--workspace", "-w", help="Name of the workspace to which apply the command."),
-) -> None:
-    """Callback for schema commands."""
-    init_callback()
-
-    if ctx.invoked_subcommand not in _COMMANDS_REQUIRING_WORKSPACE:
-        return
-
-    if workspace is None:
-        raise typer.BadParameter(
-            f"The command requires a workspace name provided using '--workspace' option before the {typer.style(ctx.invoked_subcommand, bold=True)} keyword"
-        )
+def get_workspace_client(workspace_name: str):
+    """Helper function to get workspace and client"""
+    client = init_callback()
 
     try:
-        # Initialize the client
-        client = init_callback()
-
-        # Validate the workspace
-        workspace_data = client.workspaces(workspace)
-
-        # Store the client and workspace in the context
-        ctx.obj = {
-            "client": client,
-            "workspace": workspace_data,
-        }
-
+        workspace_data = client.workspaces(workspace_name)
+        return client, workspace_data
     except ValueError:
         panel = get_argilla_themed_panel(
-            f"Workspace with name={workspace} does not exist.",
+            f"Workspace with name={workspace_name} does not exist.",
             title="Workspace not found",
             title_align="left",
             success=False,
         )
         Console().print(panel)
         raise typer.Exit(code=1)
-
     except Exception:
         panel = get_argilla_themed_panel(
             "An unexpected error occurred when trying to get the workspace.",
@@ -76,7 +52,7 @@ def callback(
         raise typer.Exit(code=1)
 
 
-app = typer.Typer(help="Commands for schemas management", no_args_is_help=True, callback=callback)
+app = typer.Typer(help="Commands for schemas management", no_args_is_help=True)
 
 
 @app.command(name="upload", help="Upload or update schemas from files in a specified directory")
@@ -90,6 +66,7 @@ def upload_schemas_command(
         dir_okay=True,
         readable=True,
     ),
+    workspace: str = typer.Option(..., "--workspace", "-w", help="Name of the workspace to which apply the command."),
     overwrite: bool = typer.Option(
         False,
         "--overwrite",
@@ -104,91 +81,113 @@ def upload_schemas_command(
     ),
 ) -> None:
     """Upload or update schemas from files in a specified directory."""
-    # Import the actual implementation from the upload module
     from argilla.cli.schemas.upload import upload_schemas
 
-    # Call the actual implementation
+    client, workspace_data = get_workspace_client(workspace)
+    ctx.obj = {
+        "client": client,
+        "workspace": workspace_data,
+    }
+
     upload_schemas(ctx, directory, overwrite, exclude)
 
 
 @app.command(name="list", help="List schemas")
 def list_schemas(
     ctx: typer.Context,
-    name: Optional[str] = typer.Option(None, help="Filter schemas by name"),
+    workspace: str = typer.Option(..., "--workspace", "-w", help="Name of the workspace to which apply the command."),
+    debug: bool = typer.Option(
+        False,
+        "--debug",
+        "-d",
+        help="Whether to show debug information.",
+        show_default=True,
+    ),
+    csv_path: Optional[Path] = typer.Option(
+        None,
+        "--csv",
+        help="Path to export the output as a CSV file.",
+        show_default=False,
+    ),
 ) -> None:
     """List available schemas with optional filtering."""
+    from argilla.cli.rich import get_argilla_themed_panel, print_rich_table, console_table_to_pandas_df
+    from rich.console import Console
+
+    client, workspace_data = get_workspace_client(workspace)
+    ctx.obj = {
+        "client": client,
+        "workspace": workspace_data,
+    }
+
+    console = Console()
+
     try:
-        workspace = ctx.obj["workspace"]
+        workspace_schemas = workspace_data.list_schemas()
 
-        # Get client from context
-        client = ctx.obj["client"]
-
-        # Fetch schemas from the server with optional filtering
-        schemas = client.list_schemas(workspace=workspace["name"], name=name)
-
-        if not schemas:
-            message = f"No schemas found in workspace '{workspace['name']}'"
-            if name:
-                message += f" matching name '{name}'"
+        if not workspace_schemas.schemas:
+            message = f"No schemas found in workspace '{workspace_data.name}'"
 
             panel = get_argilla_themed_panel(
                 message,
                 title="No schemas found",
                 title_align="left",
             )
-            Console().print(panel)
+            console.print(panel)
             return
 
-        # Create and display the table
-        table = Table(title=f"Schemas in workspace '{workspace['name']}'")
-        table.add_column("ID", justify="left")
-        table.add_column("Name", justify="left")
-        table.add_column("Description", justify="left")
-        table.add_column("Version", justify="center")
-        table.add_column("Created", justify="center")
-        table.add_column("Updated", justify="center")
+        filtered_schemas = [workspace_schemas[schema] for schema in workspace_schemas.ordering]
 
-        for schema in schemas:
-            table.add_row(
-                schema["id"],
-                schema["name"],
-                schema["description"],
-                schema["version"],
-                schema["created_at"],
-                schema["updated_at"],
+        if not filtered_schemas:
+            message = f"No schemas found in workspace '{workspace_data.name}'"
+            panel = get_argilla_themed_panel(
+                message,
+                title="No schemas found",
+                title_align="left",
             )
+            console.print(panel)
+            return
 
-        Console().print(table)
+        table_title = f"Schemas in workspace '{workspace_data.name}'"
+
+        if csv_path:
+            table = print_rich_table(filtered_schemas, title=table_title, return_table=True)
+
+            if table:
+                df = console_table_to_pandas_df(table)
+                df.to_csv(csv_path, index=False)
+                console.print(f"Exported {len(filtered_schemas)} schemas to {csv_path}")
+        else:
+            print_rich_table(filtered_schemas, title=table_title)
 
     except Exception as e:
         panel = get_argilla_themed_panel(
-            f"An unexpected error occurred when listing schemas. {e}",
+            "An unexpected error occurred when listing schemas",
             title="List Failed",
             title_align="left",
+            exception=e,
+            debug=debug,
             success=False,
         )
-        Console().print(panel)
+        console.print(panel)
         raise typer.Exit(code=1)
 
 
 @app.command(name="delete", help="Delete a schema")
 def delete_schema(
     ctx: typer.Context,
+    workspace: str = typer.Option(..., "--workspace", "-w", help="Name of the workspace to which apply the command."),
     schema_id: str = typer.Argument(..., help="ID of the schema to delete"),
 ) -> None:
     """Delete a specific schema by ID."""
+    client, workspace_data = get_workspace_client(workspace)
+
     try:
-        workspace = ctx.obj["workspace"]
-
-        # Get client from context
-        client = ctx.obj["client"]
-
         try:
-            # Get the schema to check if it exists and to display its name
-            schema = client.get_schema(workspace=workspace["name"], schema_id=schema_id)
+            schema = client.get_schema(workspace=workspace_data.name, schema_id=schema_id)
         except ValueError:
             panel = get_argilla_themed_panel(
-                f"Schema with ID '{schema_id}' not found in workspace '{workspace['name']}'",
+                f"Schema with ID '{schema_id}' not found in workspace '{workspace_data.name}'",
                 title="Schema not found",
                 title_align="left",
                 success=False,
@@ -196,8 +195,7 @@ def delete_schema(
             Console().print(panel)
             raise typer.Exit(code=1)
 
-        # Confirmation prompt
-        if not typer.confirm(f"Are you sure you want to delete schema '{schema['name']}' ({schema_id})?"):
+        if not typer.confirm(f"Are you sure you want to delete schema '{schema.name}' ({schema_id})?"):
             panel = get_argilla_themed_panel(
                 "Schema deletion cancelled",
                 title="Operation Cancelled",
@@ -206,12 +204,10 @@ def delete_schema(
             Console().print(panel)
             return
 
-        # Delete the schema via the API
-        client.delete_schema(workspace=workspace["name"], schema_id=schema_id)
+        client.delete_schema(workspace=workspace_data.name, schema_id=schema_id)
 
-        # Show success message
         panel = get_argilla_themed_panel(
-            f"Schema '{schema['name']}' (ID: {schema_id}) successfully deleted from workspace '{workspace['name']}'",
+            f"Schema '{schema.name}' (ID: {schema_id}) successfully deleted from workspace '{workspace_data.name}'",
             title="Schema Deleted",
             title_align="left",
         )
@@ -238,6 +234,7 @@ def download_schemas_command(
         dir_okay=True,
         writable=True,
     ),
+    workspace: str = typer.Option(..., "--workspace", "-w", help="Name of the workspace to which apply the command."),
     name: Optional[str] = typer.Option(
         None,
         "--name",
@@ -258,10 +255,14 @@ def download_schemas_command(
     ),
 ) -> None:
     """Download schemas from a workspace."""
-    # Import the actual implementation from the download module
     from argilla.cli.schemas.download import download_schemas
 
-    # Call the actual implementation
+    client, workspace_data = get_workspace_client(workspace)
+    ctx.obj = {
+        "client": client,
+        "workspace": workspace_data,
+    }
+
     download_schemas(ctx, directory, name, exclude, overwrite)
 
 

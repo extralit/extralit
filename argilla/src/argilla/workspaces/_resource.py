@@ -1,4 +1,4 @@
-# Copyright 2024-present, Argilla, Inc.
+# Copyright 2024-present, Extralit Labs, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,23 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from pathlib import Path
 from typing import List, TYPE_CHECKING, Optional, overload, Union, Sequence, Any
-from uuid import UUID
 
 from argilla._api._workspaces import WorkspacesAPI, DEFAULT_SCHEMA_S3_PATH
 from argilla._helpers import GenericIterator
 from argilla._helpers import LoggingMixin
 from argilla._models import WorkspaceModel
-from argilla._models._files import ListObjectsResponse, ObjectMetadata, FileObjectResponse
-from argilla._models._documents import Document
 from argilla._resource import Resource
 from argilla.client import Argilla
 
 if TYPE_CHECKING:
-    from argilla.datasets._resource import Dataset
+    from uuid import UUID
     from argilla.users._resource import User
+    from argilla.datasets._resource import Dataset
+    from argilla._models._files import ListObjectsResponse, ObjectMetadata, FileObjectResponse
+    from argilla._models._documents import Document
+    from extralit.extraction.models.schema import SchemaStructure
 
 
 class Workspace(Resource):
@@ -48,7 +48,7 @@ class Workspace(Resource):
     def __init__(
         self,
         name: Optional[str] = None,
-        id: Optional[UUID] = None,
+        id: Optional["UUID"] = None,
         client: Optional["Argilla"] = None,
     ) -> None:
         """Initializes a Workspace object with a client and a name or id
@@ -101,7 +101,7 @@ class Workspace(Resource):
     # File methods #
     ####################
 
-    def list_files(self, path: str, recursive: bool = True, include_version: bool = True) -> ListObjectsResponse:
+    def list_files(self, path: str, recursive: bool = True, include_version: bool = True) -> "ListObjectsResponse":
         """List files in the workspace.
 
         Args:
@@ -114,7 +114,7 @@ class Workspace(Resource):
         """
         return self._api.list_files(self.name, path, recursive, include_version)
 
-    def get_file(self, path: str, version_id: Optional[str] = None) -> FileObjectResponse:
+    def get_file(self, path: str, version_id: Optional[str] = None) -> "FileObjectResponse":
         """Get a file from the workspace.
 
         Args:
@@ -126,7 +126,7 @@ class Workspace(Resource):
         """
         return self._api.get_file(self.name, path, version_id)
 
-    def put_file(self, path: str, file_path: Union[str, Path]) -> ObjectMetadata:
+    def put_file(self, path: str, file_path: Union[str, Path]) -> "ObjectMetadata":
         """Upload a file to the workspace.
 
         Args:
@@ -153,7 +153,13 @@ class Workspace(Resource):
     # Document methods #
     ####################
 
-    def add_document(self, file_path: Optional[str] = None, url: Optional[str] = None, pmid: Optional[str] = None, doi: Optional[str] = None) -> UUID:
+    def add_document(
+        self,
+        file_path: Optional[str] = None,
+        url: Optional[str] = None,
+        pmid: Optional[str] = None,
+        doi: Optional[str] = None,
+    ) -> "UUID":
         """Add a document to the workspace.
 
         Args:
@@ -165,16 +171,12 @@ class Workspace(Resource):
         Returns:
             The ID of the added document.
         """
-        document = Document(
-            workspace_id=self.id,
-            file_path=file_path,
-            url=url,
-            pmid=pmid,
-            doi=doi
-        )
+        from argilla._models._documents import Document
+
+        document = Document(workspace_id=self.id, file_path=file_path, url=url, pmid=pmid, doi=doi)
         return self._api.add_document(document)
 
-    def get_documents(self) -> List[Document]:
+    def get_documents(self) -> List["Document"]:
         """Get documents from the workspace.
 
         Returns:
@@ -186,7 +188,9 @@ class Workspace(Resource):
     # Schema methods #
     ####################
 
-    def get_schemas(self, prefix: str = DEFAULT_SCHEMA_S3_PATH, exclude: Optional[List[str]] = None) -> Any:
+    def list_schemas(
+        self, prefix: str = DEFAULT_SCHEMA_S3_PATH, exclude: Optional[List[str]] = None
+    ) -> "SchemaStructure":
         """Get schemas from the workspace.
 
         Args:
@@ -196,7 +200,7 @@ class Workspace(Resource):
         Returns:
             A SchemaStructure containing the schemas.
         """
-        return self._api.get_schemas(self.name, prefix, exclude)
+        return self._api.list_schemas(self.name, prefix, exclude)
 
     def add_schema(self, schema: Any, prefix: str = DEFAULT_SCHEMA_S3_PATH) -> None:
         """Add a schema to the workspace.
@@ -207,7 +211,9 @@ class Workspace(Resource):
         """
         return self._api.add_schema(self.name, schema, prefix)
 
-    def update_schemas(self, schemas: Any, check_existing: bool = True, prefix: str = DEFAULT_SCHEMA_S3_PATH) -> ListObjectsResponse:
+    def update_schemas(
+        self, schemas: Any, check_existing: bool = True, prefix: str = DEFAULT_SCHEMA_S3_PATH
+    ) -> "ListObjectsResponse":
         """Update schemas in the workspace.
 
         Args:
