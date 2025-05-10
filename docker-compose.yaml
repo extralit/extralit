@@ -10,6 +10,9 @@ services:
       - ARGILLA_DATABASE_URL=${ARGILLA_DATABASE_URL}
       - ARGILLA_ELASTICSEARCH=${ARGILLA_ELASTICSEARCH}
       - ARGILLA_REDIS_URL=${ARGILLA_REDIS_URL}
+      - ARGILLA_DEFAULT_USERNAME=argilla
+      - ARGILLA_DEFAULT_PASSWORD=12345678
+      - ARGILLA_DEFAULT_API_KEY=argilla.apikey
     depends_on:
       - postgres
       - elasticsearch
