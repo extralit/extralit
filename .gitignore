@@ -12,6 +12,7 @@ dist/
 # Environments
 .env
 .venv
+benchmark
 
 # mypy
 .mypy_cache/
