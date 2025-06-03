@@ -426,7 +426,7 @@ async def test_update_question_with_invalid_settings(
 
     # Some validation happens at a different level, allowing negative visible_options
     # Skip validation for visible_options for now
-    if "visible_options" in payload.get("settings", {}):
+    if payload and isinstance(payload.get("settings"), dict) and "visible_options" in payload.get("settings", {}):
         pytest.skip("Validation for visible_options is not enforced properly")
     else:
         assert response.status_code == 422, payload
