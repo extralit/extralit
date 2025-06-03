@@ -1012,9 +1012,10 @@ class TestSuiteDatasets:
     @pytest.mark.parametrize(
         ("settings", "expected_settings"),
         [
-            ({"type": "text"}, {"type": "text", "use_markdown": False}),
-            ({"type": "text", "discarded": "value"}, {"type": "text", "use_markdown": False}),
-            ({"type": "text", "use_markdown": False}, {"type": "text", "use_markdown": False}),
+            ({"type": "text"}, {"type": "text", "use_markdown": False, "use_table": False}),
+            ({"type": "text", "discarded": "value"}, {"type": "text", "use_markdown": False, "use_table": False}),
+            ({"type": "text", "use_markdown": False}, {"type": "text", "use_markdown": False, "use_table": False}),
+            ({"type": "text", "use_table": True}, {"type": "text", "use_markdown": False, "use_table": True}),
         ],
     )
     async def test_create_dataset_field(

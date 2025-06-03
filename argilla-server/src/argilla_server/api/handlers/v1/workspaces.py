@@ -90,9 +90,13 @@ async def delete_workspace(
     try:
         await files.delete_bucket(minio_client, workspace.name)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-    return await accounts.delete_workspace(db, workspace)
+        # Log the error but continue with workspace deletion
+        print(f"Error deleting bucket for workspace {workspace.name}: {str(e)}")
+    
+    try:
+        return await accounts.delete_workspace(db, workspace)
+    except NotUniqueError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
 @router.get("/me/workspaces", response_model=Workspaces)
