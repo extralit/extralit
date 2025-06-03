@@ -103,9 +103,10 @@ jobs:
           ARGILLA_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/argilla
           ARGILLA_ELASTICSEARCH=http://localhost:9200
           ARGILLA_SEARCH_ENGINE=elasticsearch
-          pdm test tests/unit -vs --cov=argilla_server --cov-report=xml:coverage.xml --junitxml=junit.xml -o junit_family=legacy
+          pdm test tests/unit -vs --cov=argilla_server --cov-report=xml:coverage.xml --junitxml=junit.xml -o junit_family=legacy --tb=short
 
       - name: Upload test coverage
+        if: always()
         uses: codecov/codecov-action@v4
         with:
           file: coverage.xml
