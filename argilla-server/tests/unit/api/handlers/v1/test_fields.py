@@ -39,12 +39,12 @@ if TYPE_CHECKING:
     [
         (
             {"title": "New Title", "settings": {"type": "text", "use_markdown": True}},
-            {"type": "text", "use_markdown": True},
+            {"type": "text", "use_markdown": True, "use_table": False},
         ),
-        ({"title": "New Title"}, {"type": "text", "use_markdown": False}),
+        ({"title": "New Title"}, {"type": "text", "use_markdown": False, "use_table": False}),
         (
             {"name": "New Name", "required": True, "dataset_id": str(uuid4())},
-            {"type": "text", "use_markdown": False},
+            {"type": "text", "use_markdown": False, "use_table": False},
         ),
     ],
 )

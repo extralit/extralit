@@ -336,7 +336,7 @@ class TestBaseElasticAndOpenSearchEngine:
 
         index = opensearch.indices.get(index=index_name, flat_settings=True)[index_name]
         assert index["mappings"] == {
-            "dynamic": "strict",
+            "dynamic": "false",
             "properties": {
                 "id": {"type": "keyword"},
                 "external_id": {"type": "keyword"},
@@ -345,7 +345,7 @@ class TestBaseElasticAndOpenSearchEngine:
                 "updated_at": {"type": "date_nanos"},
                 "metadata": {"dynamic": "false", "type": "object"},
                 "responses": {
-                    "dynamic": "strict",
+                    "dynamic": "false",
                     "include_in_root": True,
                     "properties": {
                         "id": {"type": "keyword"},
@@ -382,7 +382,7 @@ class TestBaseElasticAndOpenSearchEngine:
 
         index = opensearch.indices.get(index=index_name)[index_name]
         assert index["mappings"] == {
-            "dynamic": "strict",
+            "dynamic": "false",
             "_source": {"excludes": [f"fields.{field.name}" for field in image_fields]},
             "properties": {
                 "id": {"type": "keyword"},
@@ -398,7 +398,7 @@ class TestBaseElasticAndOpenSearchEngine:
                 },
                 "metadata": {"dynamic": "false", "type": "object"},
                 "responses": {
-                    "dynamic": "strict",
+                    "dynamic": "false",
                     "include_in_root": True,
                     "properties": {
                         "id": {"type": "keyword"},
@@ -462,7 +462,7 @@ class TestBaseElasticAndOpenSearchEngine:
 
         index = opensearch.indices.get(index=index_name)[index_name]
         assert index["mappings"] == {
-            "dynamic": "strict",
+            "dynamic": "false",
             "properties": {
                 "id": {"type": "keyword"},
                 "external_id": {"type": "keyword"},
@@ -471,7 +471,7 @@ class TestBaseElasticAndOpenSearchEngine:
                 "updated_at": {"type": "date_nanos"},
                 "fields": {"properties": {"field": {"type": "text"}}},
                 "responses": {
-                    "dynamic": "strict",
+                    "dynamic": "false",
                     "include_in_root": True,
                     "properties": {
                         "id": {"type": "keyword"},
@@ -519,7 +519,7 @@ class TestBaseElasticAndOpenSearchEngine:
 
         index = opensearch.indices.get(index=index_name)[index_name]
         assert index["mappings"] == {
-            "dynamic": "strict",
+            "dynamic": "false",
             "properties": {
                 "id": {"type": "keyword"},
                 "external_id": {"type": "keyword"},
@@ -528,7 +528,7 @@ class TestBaseElasticAndOpenSearchEngine:
                 "updated_at": {"type": "date_nanos"},
                 "metadata": {"dynamic": "false", "type": "object"},
                 "responses": {
-                    "dynamic": "strict",
+                    "dynamic": "false",
                     "include_in_root": True,
                     "properties": {
                         "id": {"type": "keyword"},
@@ -1196,7 +1196,7 @@ class TestBaseElasticAndOpenSearchEngine:
 
         index = opensearch.indices.get(index=index_name)[index_name]
         assert index["mappings"]["properties"]["responses"] == {
-            "dynamic": "strict",
+            "dynamic": "false",
             "include_in_root": True,
             "properties": {
                 "id": {"type": "keyword"},
@@ -1237,7 +1237,7 @@ class TestBaseElasticAndOpenSearchEngine:
 
         properties = opensearch.indices.get_mapping(index=index_name)[index_name]["mappings"]["properties"]
         assert properties["responses"] == {
-            "dynamic": "strict",
+            "dynamic": "false",
             "include_in_root": True,
             "properties": {
                 "id": {"type": "keyword"},
@@ -1280,7 +1280,7 @@ class TestBaseElasticAndOpenSearchEngine:
         properties = opensearch.indices.get_mapping(index=index_name)[index_name]["mappings"]["properties"]
 
         assert properties["responses"] == {
-            "dynamic": "strict",
+            "dynamic": "false",
             "include_in_root": True,
             "properties": {
                 "id": {"type": "keyword"},

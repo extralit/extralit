@@ -54,17 +54,17 @@ if TYPE_CHECKING:
                 "description": "New Description",
                 "settings": {"type": "text", "use_markdown": True},
             },
-            {"type": "text", "use_markdown": True},
+            {"type": "text", "use_markdown": True, "use_table": False},
         ),
         (
             TextQuestionFactory,
             {"description": None, "settings": {"type": "text"}},
-            {"type": "text", "use_markdown": False},
+            {"type": "text", "use_markdown": False, "use_table": False},
         ),
         (
             TextQuestionFactory,
             {"name": "New Name", "required": True, "dataset_id": str(uuid4()), "settings": {"type": "text"}},
-            {"type": "text", "use_markdown": False},
+            {"type": "text", "use_markdown": False, "use_table": False},
         ),
         (
             RatingQuestionFactory,

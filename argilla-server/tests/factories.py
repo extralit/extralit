@@ -165,6 +165,16 @@ class WorkspaceFactory(BaseFactory):
 
     name = factory.Sequence(lambda n: f"workspace-{n}")
 
+    @classmethod
+    async def create_with_s3(cls, **kwargs):
+        workspace = await cls.create(**kwargs)
+        minio_client = await get_minio_client()
+        try:
+            await minio_client.make_bucket(workspace.name)
+        except Exception as e:
+            print(f"Error creating bucket for workspace {workspace.name}: {str(e)}")
+        return workspace
+
 
 class WorkspaceSyncFactory(BaseSyncFactory):
     class Meta:
@@ -463,6 +473,26 @@ class MinioFileFactory(factory.Factory):
     object_name = factory.Sequence(lambda n: f"test-object-{n}")
     version_tag = factory.Sequence(lambda n: f"v{n}")
     is_latest = True
+    last_modified = None
+    etag = None
+    size = 0
+    content_type = "application/octet-stream"
+    version_id = None
+    metadata = {}
+    
+    @classmethod
+    def attributes(cls, **kwargs):
+        return {
+            "bucket_name": kwargs.get("bucket_name", cls.bucket_name),
+            "object_name": kwargs.get("object_name", factory.Sequence(lambda n: f"test-object-{n}").__get__(None, None)),
+            "last_modified": kwargs.get("last_modified", None),
+            "etag": kwargs.get("etag", None),
+            "size": kwargs.get("size", 0),
+            "content_type": kwargs.get("content_type", "application/octet-stream"),
+            "version_id": kwargs.get("version_id", None),
+            "is_latest": kwargs.get("is_latest", True),
+            "metadata": kwargs.get("metadata", {})
+        }
 
     @classmethod
     def create(cls, **kwargs):

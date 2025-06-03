@@ -85,7 +85,10 @@ async def delete_workspace(
 ):
     await authorize(current_user, WorkspacePolicy.delete)
 
-    workspace = await Workspace.get_or_raise(db, workspace_id)
+    try:
+        workspace = await Workspace.get_or_raise(db, workspace_id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
     try:
         await files.delete_bucket(minio_client, workspace.name)
@@ -97,6 +100,8 @@ async def delete_workspace(
         return await accounts.delete_workspace(db, workspace)
     except NotUniqueError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except Exception as e:
         # Handle any other unexpected errors
         print(f"Error deleting workspace {workspace.id}: {str(e)}")
