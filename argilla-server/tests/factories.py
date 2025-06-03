@@ -479,19 +479,19 @@ class MinioFileFactory(factory.Factory):
     content_type = "application/octet-stream"
     version_id = None
     metadata = {}
-    
+
     @classmethod
     def attributes(cls, **kwargs):
         return {
             "bucket_name": kwargs.get("bucket_name", cls.bucket_name),
-            "object_name": kwargs.get("object_name", factory.Sequence(lambda n: f"test-object-{n}").__get__(None, None)),
+            "object_name": kwargs.get("object_name", f"test-object-0"),
             "last_modified": kwargs.get("last_modified", None),
             "etag": kwargs.get("etag", None),
             "size": kwargs.get("size", 0),
             "content_type": kwargs.get("content_type", "application/octet-stream"),
             "version_id": kwargs.get("version_id", None),
             "is_latest": kwargs.get("is_latest", True),
-            "metadata": kwargs.get("metadata", {})
+            "metadata": kwargs.get("metadata", {}),
         }
 
     @classmethod
@@ -516,7 +516,7 @@ class MinioFileFactory(factory.Factory):
 
     @classmethod
     def build(cls, **kwargs):
-        attributes = cls.attributes(kwargs)
+        attributes = cls.attributes(**kwargs)
         return cls._meta.model(**attributes)
 
     @classmethod
