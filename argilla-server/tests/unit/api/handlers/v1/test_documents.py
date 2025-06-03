@@ -57,14 +57,12 @@ async def test_upload_document(async_client: "AsyncClient", db: "AsyncSession", 
     # Check if the document was created in the database with the correct URL
     result = await db.execute(select(Document))
     documents = result.scalars().all()
-    assert [document.url for document in documents] == [
-        get_s3_object_url(workspace.name, get_pdf_s3_object_path(document_json["id"]))
-    ]
+    object_path = get_pdf_s3_object_path(document_json["id"])
+    s3_url = get_s3_object_url(workspace.name, object_path)
+    assert [document.url for document in documents] == [s3_url]
 
     # Check if the file was uploaded to the S3 bucket
-    get_response = await async_client.get(
-        get_s3_object_url(workspace.name, get_pdf_s3_object_path(document_json["id"]))
-    )
+    get_response = await async_client.get(s3_url)
     assert get_response.status_code == 200
     assert get_response.content == b"test file content"
 
@@ -113,9 +111,9 @@ async def test_upload_duplicate_document(async_client: "AsyncClient", db: "Async
     assert documents[0].pmid == "123456"
 
     # Check if the file was uploaded to the S3 bucket
-    get_response = await async_client.get(
-        get_s3_object_url(workspace.name, get_pdf_s3_object_path(update_document["id"]))
-    )
+    object_path = get_pdf_s3_object_path(update_document["id"])
+    s3_url = get_s3_object_url(workspace.name, object_path)
+    get_response = await async_client.get(s3_url)
     assert get_response.status_code == 200
     assert get_response.content == b"updated data"
 
@@ -138,7 +136,8 @@ async def test_get_document_by_id(async_client: "AsyncClient", db: "AsyncSession
     response = await async_client.get(f"/api/v1/documents/by-id/{document.id}", headers=owner_auth_header)
 
     assert response.status_code == 200
-    assert response.json()["id"] == str(document.id)
+    response_json = response.json()
+    assert response_json["id"] == str(document.id)
 
 
 @pytest.mark.asyncio

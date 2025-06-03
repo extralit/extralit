@@ -15,6 +15,7 @@
 import io
 from typing import TYPE_CHECKING
 from unittest.mock import patch, MagicMock
+import os
 
 import pytest
 from argilla_server.contexts.files import ListObjectsResponse, ObjectMetadata, delete_bucket, get_minio_client
@@ -108,7 +109,7 @@ async def test_list_objects(async_client: "AsyncClient", owner_auth_header: dict
 async def test_list_objects_with_versions(async_client: "AsyncClient", owner_auth_header: dict):
     bucket_name = "workspace-files"
     prefix = "schemas"
-    object_name = f"{prefix}/test"
+    object_name = os.path.join(prefix, "test")
     client = get_minio_client()
 
     if client.bucket_exists(bucket_name):
