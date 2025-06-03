@@ -99,6 +99,8 @@ jobs:
         run: pdm install
 
       - name: Run tests 📈
+        id: run-tests
+        continue-on-error: true
         run: |
           ARGILLA_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/argilla
           ARGILLA_ELASTICSEARCH=http://localhost:9200
@@ -112,6 +114,10 @@ jobs:
           file: coverage.xml
           flags: argilla-server
           token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Check test status
+        if: steps.run-tests.outcome == 'failure'
+        run: exit 1
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
@@ -159,7 +165,7 @@ jobs:
     needs:
       - build
     with:
-      is_release: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
+      is_release: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
       publish_latest: ${{ github.ref == 'refs/heads/main' }}
     secrets: inherit
 
@@ -167,7 +173,7 @@ jobs:
   publish_release:
     name: Publish Release
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
 
     needs:
       - build

@@ -399,7 +399,7 @@ class TestBaseElasticAndOpenSearchEngine:
                 },
                 "metadata": {"dynamic": "false", "type": "object"},
                 "responses": {
-                    "dynamic": False,
+                    "dynamic": "false",
                     "include_in_root": True,
                     "properties": {
                         "id": {"type": "keyword"},
@@ -472,7 +472,7 @@ class TestBaseElasticAndOpenSearchEngine:
                 "updated_at": {"type": "date_nanos"},
                 "fields": {"properties": {"field": {"type": "text"}}},
                 "responses": {
-                    "dynamic": False,
+                    "dynamic": "false",
                     "include_in_root": True,
                     "properties": {
                         "id": {"type": "keyword"},
