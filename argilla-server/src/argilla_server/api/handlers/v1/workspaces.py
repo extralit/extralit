@@ -60,31 +60,19 @@ async def create_workspace(
     current_user: User = Security(auth.get_current_user),
     minio_client: Union[Minio, files.LocalFileStorage] = Depends(files.get_minio_client),
 ):
-    try:
-        await authorize(current_user, WorkspacePolicy.create)
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
-
-    # Validate workspace name
-    if len(workspace_create.name) < 3:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Workspace name must be at least 3 characters long",
-        )
+    await authorize(current_user, WorkspacePolicy.create)
 
     try:
         files.create_bucket(minio_client, workspace_create.name)
     except Exception as e:
-        print(f"Error creating bucket: {str(e)}")
-        # Continue with workspace creation even if bucket creation fails
+        raise GenericServerError(e)
 
     try:
         workspace = await accounts.create_workspace(db, workspace_create.model_dump())
-        return workspace
     except NotUniqueError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+    return workspace
 
 
 @router.delete("/workspaces/{workspace_id}", response_model=WorkspaceSchema)

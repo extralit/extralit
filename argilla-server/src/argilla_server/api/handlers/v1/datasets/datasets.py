@@ -98,27 +98,11 @@ async def list_current_user_datasets(
 async def list_dataset_fields(
     *, db: AsyncSession = Depends(get_async_db), dataset_id: UUID, current_user: User = Security(auth.get_current_user)
 ):
-    try:
-        dataset = await Dataset.get_or_raise(db, dataset_id, options=[selectinload(Dataset.fields)])
-        
-        await authorize(current_user, DatasetPolicy.get(dataset))
-        
-        # Update text field settings to include use_table property
-        for field in dataset.fields:
-            if field.settings.get("type") == "text" and "use_table" not in field.settings:
-                field.settings["use_table"] = False
-        
-        return Fields(items=dataset.fields)
-    except Exception as e:
-        from fastapi import HTTPException
-        from argilla_server.errors.future import NotFoundError, PermissionError
-        
-        if isinstance(e, NotFoundError):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-        elif isinstance(e, PermissionError):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
-        else:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    dataset = await Dataset.get_or_raise(db, dataset_id, options=[selectinload(Dataset.fields)])
+
+    await authorize(current_user, DatasetPolicy.get(dataset))
+
+    return Fields(items=dataset.fields)
 
 
 @router.get("/datasets/{dataset_id}/vectors-settings", response_model=VectorsSettings)

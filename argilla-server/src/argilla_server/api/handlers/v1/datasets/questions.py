@@ -34,27 +34,11 @@ router = APIRouter()
 async def list_dataset_questions(
     *, db: AsyncSession = Depends(get_async_db), dataset_id: UUID, current_user: User = Security(auth.get_current_user)
 ):
-    try:
-        dataset = await Dataset.get_or_raise(db, dataset_id, options=[selectinload(Dataset.questions)])
-        
-        await authorize(current_user, DatasetPolicy.get(dataset))
-        
-        # Update text question settings to include use_table property
-        for question in dataset.questions:
-            if question.settings.get("type") == "text" and "use_table" not in question.settings:
-                question.settings["use_table"] = False
-        
-        return Questions(items=dataset.questions)
-    except Exception as e:
-        from fastapi import HTTPException
-        from argilla_server.errors.future import NotFoundError, PermissionError
-        
-        if isinstance(e, NotFoundError):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-        elif isinstance(e, PermissionError):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
-        else:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    dataset = await Dataset.get_or_raise(db, dataset_id, options=[selectinload(Dataset.questions)])
+
+    await authorize(current_user, DatasetPolicy.get(dataset))
+
+    return Questions(items=dataset.questions)
 
 
 @router.post("/datasets/{dataset_id}/questions", status_code=status.HTTP_201_CREATED, response_model=Question)

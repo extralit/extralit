@@ -240,12 +240,6 @@ async def update_field(db: AsyncSession, field: Field, field_update: "FieldUpdat
         )
 
     params = field_update.model_dump(exclude_unset=True)
-    
-    # Add use_table property if it's a text field and not already set
-    if field.settings["type"] == "text" and field_update.settings:
-        if "settings" in params and "use_table" not in params["settings"]:
-            params["settings"]["use_table"] = False
-    
     return await field.update(db, **params)
 
 

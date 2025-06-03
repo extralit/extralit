@@ -168,15 +168,11 @@ class WorkspaceFactory(BaseFactory):
     @classmethod
     async def create_with_s3(cls, **kwargs):
         workspace = await cls.create(**kwargs)
-        from argilla_server.files import create_bucket, get_minio_client
-        
         minio_client = await get_minio_client()
         try:
-            await create_bucket(minio_client, workspace.name)
+            await minio_client.make_bucket(workspace.name)
         except Exception as e:
-            print(f"Error creating S3 bucket for workspace {workspace.name}: {str(e)}")
-            # Continue even if bucket creation fails
-            
+            print(f"Error creating bucket for workspace {workspace.name}: {str(e)}")
         return workspace
 
 
@@ -485,7 +481,7 @@ class MinioFileFactory(factory.Factory):
     metadata = {}
     
     @classmethod
-    def attributes(cls, *args, **kwargs):
+    def attributes(cls, **kwargs):
         return {
             "bucket_name": kwargs.get("bucket_name", cls.bucket_name),
             "object_name": kwargs.get("object_name", factory.Sequence(lambda n: f"test-object-{n}").__get__(None, None)),
