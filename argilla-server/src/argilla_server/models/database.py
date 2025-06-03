@@ -301,23 +301,39 @@ class Question(DatabaseModel):
 
     @property
     def is_text(self) -> bool:
-        return self.settings.get("type") == QuestionType.text
+        type_value = self.settings.get("type")
+        if isinstance(type_value, str):
+            return type_value == QuestionType.text.value
+        return type_value == QuestionType.text
 
     @property
     def is_label_selection(self) -> bool:
-        return self.settings.get("type") == QuestionType.label_selection
+        type_value = self.settings.get("type")
+        if isinstance(type_value, str):
+            return type_value == QuestionType.label_selection.value
+        return type_value == QuestionType.label_selection
 
     @property
     def is_multi_label_selection(self) -> bool:
-        return self.settings.get("type") == QuestionType.multi_label_selection
+        type_value = self.settings.get("type")
+        if isinstance(type_value, str):
+            return type_value == QuestionType.multi_label_selection.value
+        return type_value == QuestionType.multi_label_selection
 
     @property
     def is_rating(self) -> bool:
-        return self.settings.get("type") == QuestionType.rating
+        type_value = self.settings.get("type")
+        if isinstance(type_value, str):
+            return type_value == QuestionType.rating.value
+        return type_value == QuestionType.rating
 
     @property
     def type(self) -> QuestionType:
-        return QuestionType(self.settings["type"])
+        # Handle both string and enum values
+        type_value = self.settings["type"]
+        if isinstance(type_value, QuestionType):
+            return type_value
+        return QuestionType(type_value)
 
     def __repr__(self):
         return (

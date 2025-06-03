@@ -37,11 +37,24 @@ async def update_field(
     field_update: FieldUpdate,
     current_user: User = Security(auth.get_current_user),
 ):
-    field = await Field.get_or_raise(db, field_id, options=[selectinload(Field.dataset)])
-
-    await authorize(current_user, FieldPolicy.update(field))
-
-    return await datasets.update_field(db, field, field_update)
+    try:
+        field = await Field.get_or_raise(db, field_id, options=[selectinload(Field.dataset)])
+        
+        await authorize(current_user, FieldPolicy.update(field))
+        
+        return await datasets.update_field(db, field, field_update)
+    except Exception as e:
+        from fastapi import HTTPException, status
+        from argilla_server.errors.future import NotFoundError, UnprocessableEntityError, PermissionError
+        
+        if isinstance(e, NotFoundError):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        elif isinstance(e, UnprocessableEntityError):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+        elif isinstance(e, PermissionError):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.delete("/fields/{field_id}", response_model=FieldSchema)
@@ -51,8 +64,21 @@ async def delete_field(
     field_id: UUID,
     current_user: User = Security(auth.get_current_user),
 ):
-    field = await Field.get_or_raise(db, field_id, options=[selectinload(Field.dataset)])
-
-    await authorize(current_user, FieldPolicy.delete(field))
-
-    return await datasets.delete_field(db, field)
+    try:
+        field = await Field.get_or_raise(db, field_id, options=[selectinload(Field.dataset)])
+        
+        await authorize(current_user, FieldPolicy.delete(field))
+        
+        return await datasets.delete_field(db, field)
+    except Exception as e:
+        from fastapi import HTTPException, status
+        from argilla_server.errors.future import NotFoundError, UnprocessableEntityError, PermissionError
+        
+        if isinstance(e, NotFoundError):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        elif isinstance(e, UnprocessableEntityError):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+        elif isinstance(e, PermissionError):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        else:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

@@ -12,13 +12,13 @@ class ObjectMetadata(BaseModel):
     bucket_name: str
     object_name: str
     last_modified: Optional[datetime] = None
-    is_latest: Optional[bool] = None
+    is_latest: Optional[bool] = True
     etag: Optional[str] = None
-    size: Optional[int] = None
-    content_type: Optional[str] = None
+    size: Optional[int] = 0
+    content_type: Optional[str] = "application/octet-stream"
     version_id: Optional[str] = None
     version_tag: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
     @field_validator('metadata', mode='before')
     def parse_metadata(cls, v):
