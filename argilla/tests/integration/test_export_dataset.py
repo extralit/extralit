@@ -387,13 +387,7 @@ class TestHubImportExportMixin:
 
         try:
             mocked_external_dataset = load_dataset(path=repo_id, split="train")
-        except Exception as e:
-            if "Dataset not found" in str(e) or "Repository Not Found" in str(e):
-                pytest.skip(f"Dataset not found on Hub: {str(e)}")
-            else:
-                raise
 
-        try:
             rg_dataset = rg.Dataset.from_hub(
                 repo_id=repo_id,
                 client=client,
@@ -409,7 +403,7 @@ class TestHubImportExportMixin:
                     assert record.fields["text"] == mocked_external_dataset[i]["text"]
                     assert record.suggestions["label"].value == int2str(mocked_external_dataset[i]["label"])
         except Exception as e:
-            if "Dataset not found" in str(e) or "Repository Not Found" in str(e):
+            if "DatasetNotFoundError" in str(e) or "doesn't exist on the Hub" in str(e):
                 pytest.skip(f"Dataset not found on Hub: {str(e)}")
             else:
-                raise
+                raise e
