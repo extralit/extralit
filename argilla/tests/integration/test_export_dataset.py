@@ -384,19 +384,32 @@ class TestHubImportExportMixin:
     ):
         repo_id = f"extralit-dev/test_import_dataset_from_hub_with_automatic_settings_{with_records_export}"
         mock_dataset_name = f"test_import_dataset_from_hub_with_automatic_settings_{uuid.uuid4()}"
-        mocked_external_dataset = load_dataset(path=repo_id, split="train")
 
-        rg_dataset = rg.Dataset.from_hub(
-            repo_id=repo_id,
-            client=client,
-            token=token,
-            name=mock_dataset_name,
-            with_records=with_records_export,
-            settings="auto",
-        )
+        try:
+            mocked_external_dataset = load_dataset(path=repo_id, split="train")
+        except Exception as e:
+            if "Dataset not found" in str(e) or "Repository Not Found" in str(e):
+                pytest.skip(f"Dataset not found on Hub: {str(e)}")
+            else:
+                raise
 
-        if with_records_export:
-            int2str = mocked_external_dataset.features["label"].int2str
-            for i, record in enumerate(rg_dataset.records(with_suggestions=True)):
-                assert record.fields["text"] == mocked_external_dataset[i]["text"]
-                assert record.suggestions["label"].value == int2str(mocked_external_dataset[i]["label"])
+        try:
+            rg_dataset = rg.Dataset.from_hub(
+                repo_id=repo_id,
+                client=client,
+                token=token,
+                name=mock_dataset_name,
+                with_records=with_records_export,
+                settings="auto",
+            )
+
+            if with_records_export:
+                int2str = mocked_external_dataset.features["label"].int2str
+                for i, record in enumerate(rg_dataset.records(with_suggestions=True)):
+                    assert record.fields["text"] == mocked_external_dataset[i]["text"]
+                    assert record.suggestions["label"].value == int2str(mocked_external_dataset[i]["label"])
+        except Exception as e:
+            if "Dataset not found" in str(e) or "Repository Not Found" in str(e):
+                pytest.skip(f"Dataset not found on Hub: {str(e)}")
+            else:
+                raise
