@@ -29,7 +29,7 @@ RUN mkdir /data
 
 # Install Elasticsearch - separate step to manage memory usage
 RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends elasticsearch=8.15.0 && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends elasticsearch=8.17.0 && \
     chown -R argilla:argilla /usr/share/elasticsearch /etc/elasticsearch /var/lib/elasticsearch /var/log/elasticsearch && \
     chown argilla:argilla /etc/default/elasticsearch && \
     apt-get clean && \

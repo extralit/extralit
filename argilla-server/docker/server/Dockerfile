@@ -1,19 +1,26 @@
 FROM python:3.13-slim AS builder
 
-# Copying argilla distribution files
-COPY dist/*.whl /packages/
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:0.7.12 /uv /uvx /bin/
+
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+ENV MAMBA_ROOT_PREFIX=/opt/venv
+ENV CONDA_PREFIX=/opt/venv
+
+# Install build dependencies
 RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y python-dev-is-python3 libpq-dev gcc && \
-    pip install --upgrade pip && \
-    pip install uvicorn[standard] && \
-    for wheel in /packages/*.whl; do pip install "$wheel"[server,postgresql]; done && \
-    apt-get remove -y python-dev-is-python3 libpq-dev gcc && \
+    apt-get install -y python-dev-is-python3 libpq-dev gcc
+
+# Install server wheel and dependencies using uv
+COPY dist/*.whl /packages/
+RUN for wheel in /packages/*.whl; do \
+      uv pip install "$wheel"[server,postgresql]; \
+    done
+
+RUN apt-get remove -y python-dev-is-python3 libpq-dev gcc && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    rm -rf /packages
+    rm -rf /var/lib/apt/lists/* /packages
 
 FROM python:3.13-slim
 
@@ -37,8 +44,8 @@ RUN mkdir -p "$ARGILLA_HOME_PATH" && \
     apt-get upgrade -y && \
     apt-get install -y libpq-dev && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    rm -rf /packages
+    rm -rf /var/lib/apt/lists/* /packages
+
 VOLUME $ARGILLA_HOME_PATH
 
 COPY scripts/start_argilla_server.sh /home/argilla
@@ -46,6 +53,8 @@ COPY scripts/start_argilla_server.sh /home/argilla
 COPY --chown=argilla:argilla --from=builder /opt/venv /opt/venv
 
 ENV PATH="/opt/venv/bin:$PATH"
+ENV MAMBA_ROOT_PREFIX=/opt/venv
+ENV CONDA_PREFIX=/opt/venv
 
 WORKDIR /home/argilla
 RUN chmod +x start_argilla_server.sh
