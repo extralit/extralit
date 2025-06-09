@@ -59,7 +59,7 @@ class TestCLICommands:
 
         # Verify the command succeeded
         assert result.returncode == 0
-        assert "Files in workspace" in result.stdout
+        assert test_workspace.name in result.stdout
         assert "No files found" in result.stdout
 
     def test_files_upload_and_list_command(self, test_workspace):
