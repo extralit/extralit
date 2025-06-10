@@ -20,37 +20,27 @@ RUN apt-get update && \
     # Install Redis signing key
     wget -qO - https://packages.redis.io/gpg | gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg && \
     apt-get install -y --no-install-recommends lsb-release && \
-    echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/redis.list && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/redis.list
 
 # Create data directory
 RUN mkdir /data
 
 # Install Elasticsearch - separate step to manage memory usage
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends elasticsearch=8.17.0 && \
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends elasticsearch=8.17.0 && \
     chown -R argilla:argilla /usr/share/elasticsearch /etc/elasticsearch /var/lib/elasticsearch /var/log/elasticsearch && \
-    chown argilla:argilla /etc/default/elasticsearch && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    chown argilla:argilla /etc/default/elasticsearch
 
 # Install Redis - separate step to avoid memory allocation issues
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends redis && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends redis
 
 # Install Python dependencies and additional utilities
 RUN pip install --no-cache-dir -r /packages/requirements.txt && \
     chmod +x /home/argilla/start.sh && \
     chmod +x /home/argilla/start_argilla_server.sh && \
-    apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl jq pwgen && \
     apt-get remove -y wget gnupg && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    rm -rf /packages && \
+    rm -rf /var/lib/apt/lists/* /packages && \
     # Give ownership of the data directory to the argilla user
     chown -R argilla:argilla /data
 

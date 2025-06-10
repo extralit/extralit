@@ -19,8 +19,9 @@ import json
 import hashlib
 import uuid
 import logging
+from datetime import datetime
 from pathlib import Path
-from typing import Any, BinaryIO, Dict, List, Optional, Union, Iterator
+from typing import Any, BinaryIO, Dict, List, Optional, Union
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -82,7 +83,7 @@ class LocalFileStorage:
         content_type: Optional[str] = None,
         part_size: int = None,
         metadata: Dict[str, Any] = None,
-    ) -> Dict[str, Any]:
+    ) -> ObjectWriteResult:
         # Ensure bucket exists
         bucket_path = self._get_bucket_path(bucket_name)
         bucket_path.mkdir(parents=True, exist_ok=True)
@@ -142,7 +143,7 @@ class LocalFileStorage:
             with open(object_path, "rb") as f:
                 return io.BytesIO(f.read())
 
-    def stat_object(self, bucket_name: str, object_name: str, version_id: Optional[str] = None) -> Dict[str, Any]:
+    def stat_object(self, bucket_name: str, object_name: str, version_id: Optional[str] = None) -> ObjectMetadata:
         if version_id:
             version_path = self._get_version_path(bucket_name, object_name).with_suffix(f".{version_id}")
             if not version_path.exists():
@@ -163,16 +164,19 @@ class LocalFileStorage:
             metadata = json.load(f)
 
         stats = path.stat()
-        return {
-            "bucket_name": bucket_name,
-            "object_name": object_name,
-            "version_id": version_id or metadata.get("version_id"),
-            "etag": metadata.get("etag"),
-            "size": stats.st_size,
-            "last_modified": stats.st_mtime,
-            "metadata": metadata,
-            "content_type": metadata.get("content_type", "application/octet-stream"),
-        }
+
+        last_modified = datetime.fromtimestamp(stats.st_mtime)
+
+        return ObjectMetadata(
+            bucket_name=bucket_name,
+            object_name=object_name,
+            version_id=version_id or metadata.get("version_id"),
+            etag=metadata.get("etag"),
+            size=stats.st_size,
+            last_modified=last_modified,
+            metadata=metadata,
+            content_type=metadata.get("content_type", "application/octet-stream"),
+        )
 
     def remove_object(self, bucket_name: str, object_name: str, version_id: Optional[str] = None):
         if version_id:
@@ -196,32 +200,26 @@ class LocalFileStorage:
         recursive: bool = False,
         include_version: bool = False,
         start_after: Optional[str] = None,
-    ) -> Iterator[Dict[str, Any]]:
+    ) -> List[ObjectMetadata]:
         bucket_path = self._get_bucket_path(bucket_name)
         if not bucket_path.exists():
             raise S3Error("NoSuchBucket", "The specified bucket does not exist", resource=bucket_name)
 
-        # Get all files in bucket (and subdirectories if recursive)
         pattern = "**/*" if recursive else "*"
         files = list(bucket_path.glob(pattern))
 
-        # Filter by prefix if provided
         if prefix:
             files = [f for f in files if str(f.relative_to(bucket_path)).startswith(prefix)]
 
-        # Filter out directories and metadata files
         files = [
             f for f in files if f.is_file() and not f.name.endswith(".metadata.json") and ".versions" not in str(f)
         ]
 
-        # Sort by name
         files.sort()
 
-        # Apply start_after if provided
         if start_after:
             files = [f for f in files if str(f.relative_to(bucket_path)) > start_after]
 
-        # Convert to objects
         for file_path in files:
             object_name = str(file_path.relative_to(bucket_path))
             stats = file_path.stat()
@@ -234,19 +232,16 @@ class LocalFileStorage:
             with open(meta_path, "r") as f:
                 metadata = json.load(f)
 
-            obj = {
-                "bucket_name": bucket_name,
-                "object_name": object_name,
-                "is_dir": False,
-                "etag": metadata.get("etag"),
-                "size": stats.st_size,
-                "last_modified": stats.st_mtime,
-                "metadata": metadata,
-                "content_type": metadata.get("content_type", "application/octet-stream"),
-            }
-
-            if include_version:
-                obj["version_id"] = metadata.get("version_id")
+            obj = ObjectMetadata(
+                bucket_name=bucket_name,
+                object_name=object_name,
+                etag=metadata.get("etag"),
+                size=stats.st_size,
+                last_modified=stats.st_mtime,
+                metadata=metadata,
+                content_type=metadata.get("content_type", "application/octet-stream"),
+                version_id=metadata.get("version_id") if include_version else None,
+            )
 
             yield obj
 

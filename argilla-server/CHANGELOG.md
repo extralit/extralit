@@ -14,7 +14,7 @@ These are the section headers that we use:
 * "Security" in case of vulnerabilities.
 -->
 
-## [Extralit] [0.5.0](https://github.com/extralit/extralit/compare/v0.4.1...v0.5.0)
+## [Extralit] [0.5.0](https://github.com/extralit/extralit/compare/v0.4.0...v0.5.0)
 
 ### Changed
 - Updated elasticsearch to 8.17.0
@@ -55,6 +55,11 @@ These are the section headers that we use:
 - Added `GET /share-your-progress` endpoint to share user progress with the community. ([#5739](https://github.com/argilla-io/argilla/pull/5739))
 - Added `argilla.share_your_progress_enabled` attribute to `GET /api/v1/settings` endpoint. ([#5739](https://github.com/argilla-io/argilla/pull/5739))
 - Added new environment variable `ARGILLA_ENABLE_SHARE_YOUR_PROGRESS` to enable or disable the share your progress feature. ([#5727](https://github.com/argilla-io/argilla/pull/5727))
+
+## [Extralit] [0.4.0](https://github.com/extralit/extralit/compare/v0.3.0...v0.4.0)
+
+### Added
+- Added LocalFileStorage to replace Minio or S3 storage
 
 ## [Argilla] [2.5.0](https://github.com/argilla-io/argilla/compare/v2.4.1...v2.5.0)
 
