@@ -29,6 +29,7 @@ from argilla_server.settings import settings
 from fastapi import HTTPException
 from minio import Minio, S3Error
 from minio.versioningconfig import VersioningConfig
+from minio.helpers import ObjectWriteResult
 from minio.commonconfig import ENABLED
 
 EXCLUDED_VERSIONING_PREFIXES = ["pdf"]
@@ -117,13 +118,15 @@ class LocalFileStorage:
         with open(meta_path, "w") as f:
             json.dump(metadata, f)
 
-        return {
-            "bucket_name": bucket_name,
-            "object_name": object_name,
-            "version_id": version_id,
-            "etag": content_hash,
-            "size": len(data_bytes),
-        }
+        return ObjectWriteResult(
+            bucket_name=bucket_name,
+            object_name=object_name,
+            version_id=version_id,
+            etag=content_hash,
+            http_headers={},
+            last_modified=None,
+            location=None,
+        )
 
     def get_object(self, bucket_name: str, object_name: str, version_id: Optional[str] = None) -> io.BytesIO:
         if version_id:
@@ -250,8 +253,8 @@ class LocalFileStorage:
 
 def get_minio_client() -> Optional[Union[Minio, LocalFileStorage]]:
     if None in [settings.s3_endpoint, settings.s3_access_key, settings.s3_secret_key]:
-        # Use local file storage instead
-        local_storage_path = os.path.join(settings.home_path, "local_storage")
+        # Use local file system storage if S3 settings are not provided
+        local_storage_path = os.path.join(settings.home_path, "storage")
         _LOGGER.info(f"Using local file storage at: {local_storage_path}")
         return LocalFileStorage(local_storage_path)
 

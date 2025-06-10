@@ -65,7 +65,7 @@ def get_argilla_themed_panel(
         # Get traceback frames
         tb = traceback.extract_tb(exception.__traceback__)
         # Get just the first and last frames for a minimal trace
-        if len(tb) > 1:
+        if len(tb) > 5:
             minimal_tb = [tb[0], tb[-1]]
         else:
             minimal_tb = tb
