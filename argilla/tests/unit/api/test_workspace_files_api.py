@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
@@ -160,15 +160,11 @@ def test_add_document(workspace_api):
             "url": "https://example.com",
             "pmid": "12345",
             "doi": "10.1234/test",
-            "file_name": None,
-            "reference": None,
-            "id": document.id,
         },
     )
 
 
-@patch("uuid.uuid4", return_value=UUID("9bad2107-c2da-4d0b-a73c-866d96582c4b"))
-def test_get_documents(mock_uuid4, workspace_api):
+def test_get_documents(workspace_api):
     """Test getting documents from a workspace."""
     mock_response = MagicMock()
     mock_response.status_code = 200

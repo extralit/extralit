@@ -34,7 +34,7 @@ def add_document(
     reference: Optional[str] = typer.Option(None, "--reference", "-r", help="Reference of the document"),
     pmid: Optional[str] = typer.Option(None, "--pmid", "-p", help="PubMed ID of the document"),
     doi: Optional[str] = typer.Option(None, "--doi", "-d", help="DOI of the document"),
-    debug: bool = typer.Option(False, "--debug", "-d", help="Show minimal stack trace for debugging"),
+    debug: bool = typer.Option(False, "--debug", help="Show minimal stack trace for debugging"),
 ) -> None:
     """Add a document to a workspace."""
     console = Console()

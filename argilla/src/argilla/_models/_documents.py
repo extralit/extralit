@@ -62,9 +62,9 @@ class Document(BaseModel):
             print("file_name", file_name)
 
         elif urlparse(file_path_or_url).scheme:
-            file_path_or_url = None
             url = file_path_or_url
-            parsed_url = urlparse(file_path_or_url)
+            file_path_or_url = None
+            parsed_url = urlparse(url)
             path = parsed_url.path
             file_name = unquote(path).split("/")[-1]
             print("file_name", file_name)
