@@ -31,6 +31,7 @@ def add_document(
         None, "--file", "-f", help="Path to the document file", exists=True, readable=True
     ),
     url: Optional[str] = typer.Option(None, "--url", "-u", help="URL of the document"),
+    reference: Optional[str] = typer.Option(None, "--reference", "-r", help="Reference of the document"),
     pmid: Optional[str] = typer.Option(None, "--pmid", "-p", help="PubMed ID of the document"),
     doi: Optional[str] = typer.Option(None, "--doi", "-d", help="DOI of the document"),
     debug: bool = typer.Option(False, "--debug", "-d", help="Show minimal stack trace for debugging"),
@@ -77,6 +78,7 @@ def add_document(
             document_id = workspace_obj.add_document(
                 file_path=str(file_path) if file_path else None,
                 url=url,
+                reference=reference,
                 pmid=pmid,
                 doi=doi,
             )

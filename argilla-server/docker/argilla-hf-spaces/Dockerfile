@@ -1,6 +1,6 @@
 # Multi-stage build to reduce image size
 ARG ARGILLA_VERSION=latest
-ARG ARGILLA_SERVER_IMAGE=extralitdev/argilla-server
+ARG ARGILLA_SERVER_IMAGE=extralit/argilla-server
 
 # Base stage with common dependencies
 FROM ${ARGILLA_SERVER_IMAGE}:${ARGILLA_VERSION} AS base
@@ -20,7 +20,8 @@ RUN apt-get update && \
     # Install Redis signing key
     wget -qO - https://packages.redis.io/gpg | gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg && \
     apt-get install -y --no-install-recommends lsb-release && \
-    echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/redis.list
+    echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/redis.list && \
+    apt-get update
 
 # Create data directory
 RUN mkdir /data

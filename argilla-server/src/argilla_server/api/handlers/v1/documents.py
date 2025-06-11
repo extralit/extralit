@@ -64,7 +64,7 @@ async def check_existing_document(db: AsyncSession, document_create: DocumentCre
 
 
 @router.post("/documents", status_code=status.HTTP_201_CREATED, response_model=UUID)
-async def upload_document(
+async def add_document(
     *,
     document_create: DocumentCreate = Depends(),
     file_data: UploadFile = File(None),
@@ -214,6 +214,7 @@ async def delete_documents_by_workspace_id(
         pmid=document_delete.pmid if document_delete else None,
         doi=document_delete.doi if document_delete else None,
         url=document_delete.url if document_delete else None,
+        reference=document_delete.reference if document_delete else None,
     )
 
     _LOGGER.info(f"Deleting {len(documents)} documents")

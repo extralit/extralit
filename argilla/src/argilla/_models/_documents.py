@@ -36,18 +36,18 @@ class Document(BaseModel):
     id: Optional[UUID] = Field(
         default_factory=uuid.uuid4, description="The ID of the document, which gets assigned randomly if not provided."
     )
+    workspace_id: Optional[UUID] = Field(None, description="The workspace ID to which the document belongs to")
     file_name: Optional[str] = Field(None)
+    file_path: Optional[str] = Field(None, description="Local file path")
     reference: Optional[str] = None
     doi: Optional[str] = None
     pmid: Optional[str] = None
     url: Optional[str] = None
-    file_path: Optional[str] = Field(None, description="Local file path")
-    workspace_id: Optional[UUID] = Field(None, description="The workspace ID to which the document belongs to")
 
     @classmethod
     def from_file(
         cls,
-        file_path: str,
+        file_path_or_url: str,
         *,
         reference: str,
         id: Optional[str] = None,
@@ -57,27 +57,29 @@ class Document(BaseModel):
     ) -> "Document":
         url = None
 
-        if os.path.exists(file_path):
-            file_name = file_path.split("/")[-1]
+        if os.path.exists(file_path_or_url):
+            file_name = file_path_or_url.split("/")[-1]
+            print("file_name", file_name)
 
-        elif urlparse(file_path).scheme:
-            file_path = None
-            url = file_path
-            parsed_url = urlparse(file_path)
+        elif urlparse(file_path_or_url).scheme:
+            file_path_or_url = None
+            url = file_path_or_url
+            parsed_url = urlparse(file_path_or_url)
             path = parsed_url.path
             file_name = unquote(path).split("/")[-1]
+            print("file_name", file_name)
         else:
-            raise ValueError(f"File path {file_path} does not exist")
+            raise ValueError(f"File path {file_path_or_url} does not exist")
 
         return cls(
-            file_path=file_path,
-            reference=reference,
-            file_name=file_name if isinstance(file_name, str) else None,
-            url=url if isinstance(url, str) else None,
             id=id or uuid.uuid4(),
+            workspace_id=workspace_id,
+            file_name=file_name if isinstance(file_name, str) else None,
+            file_path=file_path_or_url,
+            reference=reference,
+            url=url if isinstance(url, str) else None,
             pmid=str(pmid) if isinstance(pmid, int) or isinstance(pmid, str) and len(pmid) > 3 else None,
             doi=doi if isinstance(doi, str) else None,
-            workspace_id=workspace_id,
         )
 
     def to_server_payload(self) -> Dict[str, Any]:
@@ -85,12 +87,12 @@ class Document(BaseModel):
         to create a field in the `FeedbackDataset`.
         """
         json = {
-            "url": self.url,
             "file_name": self.file_name,
+            "reference": self.reference,
+            "url": self.url,
+            "workspace_id": str(self.workspace_id),
             "pmid": self.pmid,
             "doi": self.doi,
-            "reference": self.reference,
-            "workspace_id": str(self.workspace_id),
         }
         if isinstance(self.id, UUID):
             json["id"] = str(self.id)
@@ -98,4 +100,4 @@ class Document(BaseModel):
         return json
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(id={self.id!r}, file_name={self.file_name!r}, pmid={self.pmid!r}, doi={self.doi!r}, workspace_id={self.workspace_id!r})"
+        return f"{self.__class__.__name__}(file_name={self.file_name!r}, url={self.url!r}, pmid={self.pmid!r}, doi={self.doi!r}, workspace_id={self.workspace_id!r})"

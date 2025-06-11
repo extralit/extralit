@@ -16,6 +16,10 @@ These are the section headers that we use:
 
 ## [Extralit] [0.5.0](https://github.com/extralit/extralit/compare/v0.4.0...v0.5.0)
 
+### Fixed
+- LocalFileStorage implementation to mimic Minio or S3 storage.
+- Used `uv` in `argilla-server` and `argilla-hf-spaces` Dockerfiles
+
 ### Changed
 - Updated elasticsearch to 8.17.0
 

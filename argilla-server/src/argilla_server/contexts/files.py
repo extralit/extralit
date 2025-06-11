@@ -24,14 +24,17 @@ from pathlib import Path
 from typing import Any, BinaryIO, Dict, List, Optional, Union
 from urllib.parse import urlparse
 from uuid import UUID
+from urllib3 import HTTPResponse
 
-from argilla_server.api.schemas.v1.files import ListObjectsResponse, ObjectMetadata, FileObjectResponse
-from argilla_server.settings import settings
 from fastapi import HTTPException
 from minio import Minio, S3Error
 from minio.versioningconfig import VersioningConfig
 from minio.helpers import ObjectWriteResult
 from minio.commonconfig import ENABLED
+
+from argilla_server.api.schemas.v1.files import ListObjectsResponse, ObjectMetadata, FileObjectResponse
+from argilla_server.settings import settings
+from argilla_server.api.schemas.v1.files import FileObjectResponse
 
 EXCLUDED_VERSIONING_PREFIXES = ["pdf"]
 
@@ -129,36 +132,72 @@ class LocalFileStorage:
             location=None,
         )
 
-    def get_object(self, bucket_name: str, object_name: str, version_id: Optional[str] = None) -> io.BytesIO:
+    def get_object(
+        self, bucket_name: str, object_name: str, version_id: Optional[str] = None, include_versions: bool = False
+    ) -> "FileObjectResponse":
         if version_id:
             version_path = self._get_version_path(bucket_name, object_name).with_suffix(f".{version_id}")
             if not version_path.exists():
-                raise S3Error("NoSuchKey", "The specified version does not exist", resource=object_name)
+                raise S3Error("NoSuchKey", "The specified version does not exist", object_name, "", "", None)
             with open(version_path, "rb") as f:
-                return io.BytesIO(f.read())
+                content = f.read()
         else:
             object_path = self._get_object_path(bucket_name, object_name)
             if not object_path.exists():
-                raise S3Error("NoSuchKey", "The specified key does not exist", resource=object_name)
+                raise S3Error("NoSuchKey", "The specified key does not exist", object_name, "", "", None)
             with open(object_path, "rb") as f:
-                return io.BytesIO(f.read())
+                content = f.read()
+
+        meta_path = self._get_object_path(bucket_name, object_name).with_suffix(".metadata.json")
+        if not meta_path.exists():
+            raise S3Error("NoSuchKey", "The specified key does not exist", object_name, "", "", None)
+        with open(meta_path, "r") as f:
+            metadata_dict = json.load(f)
+
+        if version_id:
+            version_path = self._get_version_path(bucket_name, object_name).with_suffix(f".{version_id}")
+            stats = version_path.stat()
+        else:
+            object_path = self._get_object_path(bucket_name, object_name)
+            stats = object_path.stat()
+        last_modified = datetime.fromtimestamp(stats.st_mtime)
+        metadata = ObjectMetadata(
+            bucket_name=bucket_name,
+            object_name=object_name,
+            version_id=version_id or metadata_dict.get("version_id"),
+            etag=metadata_dict.get("etag"),
+            size=stats.st_size,
+            last_modified=last_modified,
+            metadata=metadata_dict,
+            content_type=metadata_dict.get("content_type", "application/octet-stream"),
+        )
+
+        http_response = HTTPResponse(body=io.BytesIO(content), preload_content=False)
+
+        versions = None
+        if include_versions:
+            objects = list(self.list_objects(bucket_name, prefix=object_name, include_version=True))
+            objects = [ObjectMetadata(**obj.dict()) for obj in objects]
+            versions = ListObjectsResponse(objects=objects)
+
+        return FileObjectResponse(response=http_response, metadata=metadata, versions=versions)
 
     def stat_object(self, bucket_name: str, object_name: str, version_id: Optional[str] = None) -> ObjectMetadata:
         if version_id:
             version_path = self._get_version_path(bucket_name, object_name).with_suffix(f".{version_id}")
             if not version_path.exists():
-                raise S3Error("NoSuchKey", "The specified version does not exist", resource=object_name)
+                raise S3Error("NoSuchKey", "The specified version does not exist", object_name, "", "", None)
             path = version_path
         else:
             object_path = self._get_object_path(bucket_name, object_name)
             if not object_path.exists():
-                raise S3Error("NoSuchKey", "The specified key does not exist", resource=object_name)
+                raise S3Error("NoSuchKey", "The specified key does not exist", object_name, "", "", None)
             path = object_path
 
         # Get metadata from file
         meta_path = self._get_object_path(bucket_name, object_name).with_suffix(".metadata.json")
         if not meta_path.exists():
-            raise S3Error("NoSuchKey", "The specified key does not exist", resource=object_name)
+            raise S3Error("NoSuchKey", "The specified key does not exist", object_name, "", "", None)
 
         with open(meta_path, "r") as f:
             metadata = json.load(f)
@@ -203,7 +242,7 @@ class LocalFileStorage:
     ) -> List[ObjectMetadata]:
         bucket_path = self._get_bucket_path(bucket_name)
         if not bucket_path.exists():
-            raise S3Error("NoSuchBucket", "The specified bucket does not exist", resource=bucket_name)
+            raise S3Error("NoSuchBucket", "The specified bucket does not exist", bucket_name, "", "", None)
 
         pattern = "**/*" if recursive else "*"
         files = list(bucket_path.glob(pattern))
@@ -331,7 +370,11 @@ def get_object(
             raise se
 
     try:
-        obj = client.get_object(bucket, object, version_id=stat.version_id)
+        obj = client.get_object(bucket, object, version_id=stat.version_id, include_versions=include_versions)
+
+        # If already a FileObjectResponse (from LocalFileStorage), return as is
+        if isinstance(obj, FileObjectResponse):
+            return obj
 
         if include_versions:
             versions = list_objects(client, bucket, prefix=object, include_version=include_versions)
@@ -345,7 +388,7 @@ def get_object(
         raise HTTPException(status_code=404, detail=f"Object {object} not found in bucket {bucket}")
     except Exception as e:
         _LOGGER.error(f"Error getting object {object} from bucket {bucket}: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e.message}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {getattr(e, 'message', str(e))}")
 
 
 def put_object(

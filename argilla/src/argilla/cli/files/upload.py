@@ -27,7 +27,7 @@ def upload_file(
     file_path: Path = typer.Argument(..., help="Path to the file to upload", exists=True, readable=True),
     workspace: str = typer.Option(..., "--workspace", "-w", help="Workspace name"),
     remote_path: Optional[str] = typer.Option(
-        None, "--remote-path", "-r", help="Remote path to store the file (default: same as local filename)"
+        None, "--remote-path", "-r", help="Remote file path (default: same as local filename)"
     ),
     overwrite: bool = typer.Option(False, "--overwrite", "-o", help="Overwrite existing file"),
 ) -> None:
