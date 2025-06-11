@@ -2,24 +2,19 @@ FROM python:3.13-slim AS builder
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:0.7.12 /uv /uvx /bin/
-
+# Copying argilla distribution files
+COPY dist/*.whl /packages/
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 ENV MAMBA_ROOT_PREFIX=/opt/venv
 ENV CONDA_PREFIX=/opt/venv
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends libc6-dev libpq-dev gcc && \
-    rm -rf /var/lib/apt/lists/*
-
-COPY dist/*.whl /packages/
-
 RUN --mount=type=cache,target=/root/.cache/uv \
-    for wheel in /packages/*.whl; do \
-      uv pip install "$wheel"[server,postgresql]; \
-    done
-
-RUN apt-get purge -y --auto-remove libc6-dev libpq-dev gcc && \
+    apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends libc6-dev libpq-dev gcc && \
+    for wheel in /packages/*.whl; do uv pip install "$wheel"[server,postgresql]; done && \
+    apt-get purge -y --auto-remove libc6-dev libpq-dev gcc && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /packages
 
@@ -45,11 +40,11 @@ RUN mkdir -p "$ARGILLA_HOME_PATH" && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends libpq-dev && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
+    rm -rf /var/lib/apt/lists/* /packages
 VOLUME $ARGILLA_HOME_PATH
 
 COPY scripts/start_argilla_server.sh /home/argilla
+# Destination folder must be the same as the builder one. Otherwise installed script won't work (since the installation fixes the path inside the script)
 COPY --chown=argilla:argilla --from=builder /opt/venv /opt/venv
 
 ENV PATH="/opt/venv/bin:$PATH"
